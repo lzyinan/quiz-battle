@@ -1,0 +1,15 @@
+{
+  "tasks": [
+    {
+      "id": "269e137c",
+      "cron": "*/2 * * * *",
+      "prompt": "检查 /Users/jinyn/work/srdt 项目的后台服务是否在运行：\n1. 用 `lsof -ti:3001` 检查后端是否在运行，如果不在运行则重启：`cd /Users/jinyn/work/srdt && npx tsx server/src/index.ts > /tmp/srdt-server.log 2>&1 &`\n2. 用 `lsof -ti:3000` 检查前端是否在运行，如果不在运行则重启：`cd /Users/jinyn/work/srdt/client && npx vite > /tmp/srdt-client.log 2>&1 &`\n3. 简短汇报两个服务的状态",
+      "createdAt": 1780550866555,
+      "lastFiredAt": 1780551484232,
+      "recurring": true,
+      "createdBySessionId": "1c1af0f0-e5ee-457d-a549-6aa6a5831aa7",
+      "createdByPid": 58714,
+      "createdByProcStart": "Thu Jun  4 03:41:03 2026"
+    }
+  ]
+}
