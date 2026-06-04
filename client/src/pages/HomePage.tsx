@@ -12,7 +12,7 @@ export default function HomePage() {
   const handleCreate = () => {
     const cleanup = on('room-created', (data) => {
       cleanup();
-      navigate(`/game/${data.roomId}`);
+      navigate(`/game/${data.roomId}`, { state: { creator: true, playerIndex: 0 } });
     });
     emit('create-room');
   };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
 import type { Player, Question, AnswerResultPayload, GameOverPayload } from '../../../shared/types';
 import RoomLobby from '../components/room/RoomLobby';
@@ -13,11 +13,17 @@ type GamePhase = 'lobby' | 'countdown' | 'playing' | 'result';
 export default function GamePage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { connected, on, emit } = useSocket();
 
+  const isCreator = !!(location.state as any)?.creator;
+  const creatorPlayerIndex = (location.state as any)?.playerIndex ?? 0;
+
   const [phase, setPhase] = useState<GamePhase>('lobby');
-  const [playerIndex, setPlayerIndex] = useState<number>(0);
-  const [players, setPlayers] = useState<(Player | null)[]>([]);
+  const [playerIndex, setPlayerIndex] = useState<number>(isCreator ? creatorPlayerIndex : 0);
+  const [players, setPlayers] = useState<(Player | null)[]>(
+    isCreator ? [{ id: '', name: '玩家A', playerIndex: 0, ready: false }, undefined] : []
+  );
   const [countdownNumber, setCountdownNumber] = useState<number>(3);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -32,9 +38,9 @@ export default function GamePage() {
   const [gameResult, setGameResult] = useState<GameOverPayload | null>(null);
   const [error, setError] = useState('');
 
-  // Join room on mount
+  // Join room on mount (only for non-creators — creators are already in the room)
   useEffect(() => {
-    if (!connected || !roomId) return;
+    if (!connected || !roomId || isCreator) return;
     const cleanupJoined = on('room-joined', (data) => {
       setPlayerIndex(data.playerIndex);
       setPlayers(data.players);
