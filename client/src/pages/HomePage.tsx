@@ -29,7 +29,7 @@ export default function HomePage() {
     const cleanupJoined = on('room-joined', (data) => {
       cleanupJoined();
       cleanupError();
-      navigate(`/game/${data.roomId}`);
+      navigate(`/game/${data.roomId}`, { state: { joined: true, playerIndex: data.playerIndex, players: data.players } });
     });
 
     const cleanupError = on('room-error', (msg) => {

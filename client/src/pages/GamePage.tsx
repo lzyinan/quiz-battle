@@ -16,13 +16,18 @@ export default function GamePage() {
   const location = useLocation();
   const { connected, on, emit } = useSocket();
 
-  const isCreator = !!(location.state as any)?.creator;
-  const creatorPlayerIndex = (location.state as any)?.playerIndex ?? 0;
+  const routeState = location.state as any;
+  const isCreator = !!routeState?.creator;
+  const isJoiner = !!routeState?.joined;
+  const savedPlayerIndex = routeState?.playerIndex ?? 0;
+  const savedPlayers = (routeState?.players ?? null) as (Player | null)[] | null;
 
   const [phase, setPhase] = useState<GamePhase>('lobby');
-  const [playerIndex, setPlayerIndex] = useState<number>(isCreator ? creatorPlayerIndex : 0);
+  const [playerIndex, setPlayerIndex] = useState<number>(savedPlayerIndex);
   const [players, setPlayers] = useState<(Player | null)[]>(
-    isCreator ? [{ id: '', name: '玩家A', playerIndex: 0, ready: false }, null] : []
+    isCreator
+      ? [{ id: '', name: '玩家A', playerIndex: 0, ready: false }, null]
+      : savedPlayers ?? []
   );
   const [countdownNumber, setCountdownNumber] = useState<number>(3);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -38,9 +43,9 @@ export default function GamePage() {
   const [gameResult, setGameResult] = useState<GameOverPayload | null>(null);
   const [error, setError] = useState('');
 
-  // Join room on mount (only for non-creators — creators are already in the room)
+  // Join room on mount (only for fresh visits via URL — creators and joiners are already in the room)
   useEffect(() => {
-    if (!connected || !roomId || isCreator) return;
+    if (!connected || !roomId || isCreator || isJoiner) return;
     const cleanupJoined = on('room-joined', (data) => {
       setPlayerIndex(data.playerIndex);
       setPlayers(data.players);
