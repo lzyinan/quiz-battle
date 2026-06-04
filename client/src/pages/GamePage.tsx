@@ -22,7 +22,7 @@ export default function GamePage() {
   const [phase, setPhase] = useState<GamePhase>('lobby');
   const [playerIndex, setPlayerIndex] = useState<number>(isCreator ? creatorPlayerIndex : 0);
   const [players, setPlayers] = useState<(Player | null)[]>(
-    isCreator ? [{ id: '', name: '玩家A', playerIndex: 0, ready: false }, undefined] : []
+    isCreator ? [{ id: '', name: '玩家A', playerIndex: 0, ready: false }, null] : []
   );
   const [countdownNumber, setCountdownNumber] = useState<number>(3);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
