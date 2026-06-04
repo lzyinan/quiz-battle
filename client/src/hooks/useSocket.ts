@@ -10,7 +10,7 @@ let refCount = 0;
 
 function getSocket(): GameSocket {
   if (!globalSocket) {
-    globalSocket = io({ autoConnect: true });
+    globalSocket = io({ autoConnect: true, path: '/pk/socket.io' });
   }
   return globalSocket;
 }

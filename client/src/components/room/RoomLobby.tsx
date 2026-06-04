@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Player, Quiz } from '../../../../shared/types';
+import { API_BASE } from '../../utils/api';
 
 interface RoomLobbyProps {
   roomId: string;
@@ -17,7 +18,7 @@ export default function RoomLobby({ roomId, playerIndex, players, connected, onE
   const [opponentReady, setOpponentReady] = useState(false);
 
   useEffect(() => {
-    fetch('/api/quizzes').then(res => res.json()).then(setQuizzes).catch(console.error);
+    fetch(`${API_BASE}/quizzes`).then(res => res.json()).then(setQuizzes).catch(console.error);
   }, []);
 
   useEffect(() => {

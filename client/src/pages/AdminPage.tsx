@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Quiz, Question, QuestionType } from '../../../shared/types';
+import { API_BASE } from '../utils/api';
 
 interface QuizWithCount extends Quiz {
   questionCount: number;
@@ -18,12 +19,12 @@ export default function AdminPage() {
   const [showForm, setShowForm] = useState(false);
 
   const loadQuizzes = async () => {
-    const res = await fetch('/api/quizzes');
+    const res = await fetch(`${API_BASE}/quizzes`);
     setQuizzes(await res.json());
   };
 
   const loadQuestions = async (quizId: number) => {
-    const res = await fetch(`/api/quizzes/${quizId}/questions`);
+    const res = await fetch(`${API_BASE}/quizzes/${quizId}/questions`);
     setQuestions(await res.json());
   };
 
@@ -36,7 +37,7 @@ export default function AdminPage() {
 
   const handleAddQuiz = async () => {
     if (!newName.trim()) return;
-    await fetch('/api/quizzes', {
+    await fetch(`${API_BASE}/quizzes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newName, description: newDesc }),
@@ -47,7 +48,7 @@ export default function AdminPage() {
 
   const handleDeleteQuiz = async (id: number) => {
     if (!confirm('确定删除该题库及其所有题目？')) return;
-    await fetch(`/api/quizzes/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE}/quizzes/${id}`, { method: 'DELETE' });
     if (selectedQuiz === id) setSelectedQuiz(null);
     loadQuizzes();
   };
@@ -63,9 +64,9 @@ export default function AdminPage() {
     const payload = { ...input, options: filteredOptions };
 
     if (id) {
-      await fetch(`/api/questions/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await fetch(`${API_BASE}/questions/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     } else if (selectedQuiz) {
-      await fetch(`/api/quizzes/${selectedQuiz}/questions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await fetch(`${API_BASE}/quizzes/${selectedQuiz}/questions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     }
     setEditing({ ...EMPTY_QUESTION });
     setShowForm(false);
@@ -79,7 +80,7 @@ export default function AdminPage() {
 
   const handleDeleteQuestion = async (id: number) => {
     if (!confirm('确定删除这道题目？')) return;
-    await fetch(`/api/questions/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE}/questions/${id}`, { method: 'DELETE' });
     if (selectedQuiz) loadQuestions(selectedQuiz);
   };
 
