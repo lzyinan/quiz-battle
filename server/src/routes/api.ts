@@ -27,7 +27,7 @@ apiRouter.post('/quizzes', (req: Request, res: Response) => {
   const result = db.prepare(
     'INSERT INTO quizzes (name, description) VALUES (?, ?)'
   ).run(name.trim(), description?.trim() || '');
-  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(result.lastInsertRowid);
+  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(result.lastInsertRowid) as any;
   res.status(201).json({ ...quiz, questionCount: 0 });
 });
 
@@ -100,8 +100,8 @@ apiRouter.post('/quizzes/:quizId/questions', (req: Request, res: Response) => {
   const result = db.prepare(
     'INSERT INTO questions (quiz_id, type, content, options, answer) VALUES (?, ?, ?, ?, ?)'
   ).run(req.params.quizId, type || 'single', content.trim(), JSON.stringify(options), answer);
-  const question = db.prepare('SELECT * FROM questions WHERE id = ?').get(result.lastInsertRowid);
-  res.status(201).json({ ...question, options: JSON.parse((question as any).options) });
+  const question = db.prepare('SELECT * FROM questions WHERE id = ?').get(result.lastInsertRowid) as any;
+  res.status(201).json({ ...question, options: JSON.parse(question.options) });
 });
 
 // PUT /api/questions/:id

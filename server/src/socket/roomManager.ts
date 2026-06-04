@@ -1,4 +1,4 @@
-import type { Room, Player, Question, AnswerRecord } from '../../../shared/types.js';
+import type { Room, Player, Question } from '../../../shared/types.js';
 import { getDb } from '../db/index.js';
 
 const rooms = new Map<string, Room>();
