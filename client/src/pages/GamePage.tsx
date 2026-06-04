@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
-import type { Player, Question, AnswerResultPayload, GameOverPayload, Quiz } from '../../../shared/types';
+import type { Player, Question, AnswerResultPayload, GameOverPayload } from '../../../shared/types';
 import RoomLobby from '../components/room/RoomLobby';
 import CountdownOverlay from '../components/game/CountdownOverlay';
 import QuestionCard from '../components/game/QuestionCard';

@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-
 interface ScoreBoardProps {
   playerIndex: number;
   scores: [number, number];

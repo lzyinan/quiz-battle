@@ -15,7 +15,7 @@ const OPTION_COLORS = [
   'from-purple-500 to-purple-600',
 ];
 
-export default function QuestionCard({ question, questionIndex, disabled, showResult, onSubmit }: QuestionCardProps) {
+export default function QuestionCard({ question, disabled, showResult, onSubmit }: QuestionCardProps) {
   return (
     <div className="w-full max-w-lg mx-auto">
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
