@@ -12,9 +12,9 @@ export function generateRoomId(): string {
   return id;
 }
 
-export function createRoom(playerId: string): Room {
+export function createRoom(playerId: string, playerName: string): Room {
   const id = generateRoomId();
-  const player: Player = { id: playerId, name: '玩家A', playerIndex: 0, ready: false };
+  const player: Player = { id: playerId, name: playerName || '玩家A', playerIndex: 0, ready: false };
   const room: Room = {
     id, players: [player, undefined], status: 'waiting', quizId: null,
     questions: [], currentQuestion: 0, scores: [0, 0], lockedBy: null,
@@ -25,7 +25,7 @@ export function createRoom(playerId: string): Room {
   return room;
 }
 
-export function joinRoom(roomId: string, playerId: string): { room: Room; playerIndex: number } | { error: string } {
+export function joinRoom(roomId: string, playerId: string, playerName: string): { room: Room; playerIndex: number } | { error: string } {
   const room = rooms.get(roomId);
   if (!room) return { error: '房间不存在' };
   if (room.players[0]?.id === playerId) return { error: '你已经在房间里了' };
@@ -33,10 +33,36 @@ export function joinRoom(roomId: string, playerId: string): { room: Room; player
     if (room.players[1].id === playerId) return { error: '你已经在房间里了' };
     return { error: '房间已满' };
   }
-  const player: Player = { id: playerId, name: '玩家B', playerIndex: 1, ready: false };
+  const player: Player = { id: playerId, name: playerName || '玩家B', playerIndex: 1, ready: false };
   room.players[1] = player;
   room.status = 'readying';
   return { room, playerIndex: 1 };
+}
+
+/** Reconnect a disconnected player */
+export function reconnectPlayer(roomId: string, playerIndex: number, newSocketId: string): { room: Room; playerIndex: number } | { error: string } {
+  const room = rooms.get(roomId);
+  if (!room) return { error: '房间不存在' };
+  const player = room.players[playerIndex];
+  if (!player) return { error: '玩家不存在' };
+
+  // Update socket id
+  player.id = newSocketId;
+  return { room, playerIndex };
+}
+
+/** Reset room for a new game */
+export function resetRoom(room: Room): void {
+  room.status = 'readying';
+  room.questions = [];
+  room.currentQuestion = 0;
+  room.scores = [0, 0];
+  room.lockedBy = null;
+  room.answers = [];
+  room.quizId = null;
+  // Reset ready status
+  room.players[0].ready = false;
+  if (room.players[1]) room.players[1].ready = false;
 }
 
 export function getRoom(roomId: string): Room | undefined {
@@ -136,4 +162,17 @@ function scheduleEmptyRoomCleanup(roomId: string): void {
 
 export function getRoomCount(): number {
   return rooms.size;
+}
+
+export function getRoomsInfo() {
+  return Array.from(rooms.values()).map(room => ({
+    id: room.id,
+    status: room.status,
+    players: room.players.filter(Boolean).map(p => ({ name: p!.name, ready: p!.ready })),
+    scores: room.scores,
+    currentQuestion: room.currentQuestion,
+    totalQuestions: room.questions.length,
+    quizId: room.quizId,
+    createdAt: room.createdAt,
+  }));
 }

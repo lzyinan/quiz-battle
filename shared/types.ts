@@ -62,15 +62,17 @@ export interface AnswerRecord {
 // ==================== Socket 事件类型 ====================
 
 export interface ClientEvents {
-  'create-room': () => void;
-  'join-room': (roomId: string) => void;
+  'create-room': (data: { playerName: string }) => void;
+  'join-room': (data: { roomId: string; playerName: string }) => void;
+  'reconnect-room': (data: { roomId: string; playerIndex: number; playerName: string }) => void;
   'select-quiz': (quizId: number | null) => void;
   'player-ready': () => void;
   'submit-answer': (data: { questionIndex: number; optionIndex: number }) => void;
+  'play-again': () => void;
 }
 
 export interface ServerEvents {
-  'room-created': (data: { roomId: string; playerIndex: number }) => void;
+  'room-created': (data: { roomId: string; playerIndex: number; players: Player[] }) => void;
   'room-joined': (data: { roomId: string; playerIndex: number; players: Player[] }) => void;
   'room-error': (message: string) => void;
   'player-joined': (players: Player[]) => void;
@@ -83,6 +85,8 @@ export interface ServerEvents {
   'game-over': (data: GameOverPayload) => void;
   'opponent-disconnected': () => void;
   'opponent-reconnected': () => void;
+  'reconnected': (data: { roomId: string; playerIndex: number; players: Player[]; phase: string }) => void;
+  'room-reset': (players: Player[]) => void;
 }
 
 export interface AnswerResultPayload {

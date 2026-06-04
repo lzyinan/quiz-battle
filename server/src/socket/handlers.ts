@@ -7,21 +7,52 @@ export function registerSocketHandlers(io: Server): void {
   io.on('connection', (socket: Socket) => {
     console.log(`[Socket] 连接: ${socket.id}`);
 
-    socket.on('create-room', () => {
-      const room = RoomManager.createRoom(socket.id);
+    socket.on('create-room', (data: { playerName: string }) => {
+      const room = RoomManager.createRoom(socket.id, data.playerName || '玩家A');
       socket.join(room.id);
-      socket.emit('room-created', { roomId: room.id, playerIndex: 0 });
+      socket.emit('room-created', { roomId: room.id, playerIndex: 0, players: room.players.map(p => p ?? null) });
       console.log(`[Room] 创建: ${room.id}`);
     });
 
-    socket.on('join-room', (roomId: string) => {
-      const result = RoomManager.joinRoom(roomId, socket.id);
+    socket.on('join-room', (data: { roomId: string; playerName: string }) => {
+      const result = RoomManager.joinRoom(data.roomId, socket.id, data.playerName || '玩家B');
       if ('error' in result) { socket.emit('room-error', result.error); return; }
-      socket.join(roomId);
+      socket.join(data.roomId);
       const { room, playerIndex } = result;
       socket.emit('room-joined', { roomId: room.id, playerIndex, players: room.players.map(p => p ?? null) });
-      io.to(roomId).emit('player-joined', room.players.map(p => p ?? null));
-      console.log(`[Room] ${socket.id} 加入房间 ${roomId}`);
+      io.to(data.roomId).emit('player-joined', room.players.map(p => p ?? null));
+      console.log(`[Room] ${socket.id} 加入房间 ${data.roomId}`);
+    });
+
+    socket.on('reconnect-room', (data: { roomId: string; playerIndex: number; playerName: string }) => {
+      const result = RoomManager.reconnectPlayer(data.roomId, data.playerIndex, socket.id);
+      if ('error' in result) {
+        socket.emit('room-error', result.error);
+        return;
+      }
+      socket.join(data.roomId);
+      const { room } = result;
+
+      // Notify the reconnecting player
+      socket.emit('reconnected', {
+        roomId: data.roomId,
+        playerIndex: data.playerIndex,
+        players: room.players.map(p => p ?? null),
+        phase: room.status,
+      });
+
+      // Notify opponent
+      socket.to(data.roomId).emit('opponent-reconnected');
+      console.log(`[Room] ${socket.id} 重连房间 ${data.roomId}`);
+    });
+
+    socket.on('play-again', () => {
+      const room = RoomManager.findRoomByPlayer(socket.id);
+      if (!room || room.status !== 'finished') return;
+
+      RoomManager.resetRoom(room);
+      io.to(room.id).emit('room-reset', room.players.map(p => p ?? null));
+      console.log(`[Room] 房间 ${room.id} 再来一局`);
     });
 
     socket.on('select-quiz', (quizId: number | null) => {
@@ -66,7 +97,14 @@ export function registerSocketHandlers(io: Server): void {
         if (next === null) {
           const gameOver = RoomManager.getGameOverPayload(room);
           io.to(room.id).emit('game-over', gameOver);
-          setTimeout(() => { RoomManager.deleteRoom(room.id); io.socketsLeave(room.id); }, 10_000);
+          // Don't auto-delete — allow play-again. Clean up after 5 minutes of inactivity.
+          setTimeout(() => {
+            const currentRoom = RoomManager.getRoom(room.id);
+            if (currentRoom && currentRoom.status === 'finished') {
+              RoomManager.deleteRoom(room.id);
+              io.socketsLeave(room.id);
+            }
+          }, 5 * 60_000);
         } else {
           io.to(room.id).emit('next-question', { question: next.question, questionIndex: next.index, totalQuestions: next.total });
         }

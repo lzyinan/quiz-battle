@@ -1,7 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { getDb } from '../db/index.js';
+import { getRoomsInfo, getRoomCount } from '../socket/roomManager.js';
 
 export const apiRouter = Router();
+
+// GET /api/rooms
+apiRouter.get('/rooms', (_req: Request, res: Response) => {
+  const rooms = getRoomsInfo();
+  res.json({ count: getRoomCount(), rooms });
+});
 
 // GET /api/quizzes
 apiRouter.get('/quizzes', (_req: Request, res: Response) => {
