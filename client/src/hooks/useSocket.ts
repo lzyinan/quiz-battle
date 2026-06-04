@@ -4,9 +4,9 @@ import type { ServerEvents, ClientEvents } from '../../../shared/types';
 
 type GameSocket = Socket<ServerEvents, ClientEvents>;
 
-// 全局单例 — 跨页面共享同一个 Socket 连接，避免路由切换时断线导致房间丢失
+// 全局单例 — 整个应用生命周期共享同一个连接
+// 页面切换时不断开，只有浏览器关闭/刷新才断开
 let globalSocket: GameSocket | null = null;
-let refCount = 0;
 
 function getSocket(): GameSocket {
   if (!globalSocket) {
@@ -20,7 +20,6 @@ export function useSocket() {
 
   useEffect(() => {
     const socket = getSocket();
-    refCount++;
 
     const onConnect = () => { setConnected(true); };
     const onDisconnect = () => { setConnected(false); };
@@ -30,15 +29,10 @@ export function useSocket() {
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
 
+    // 只移除事件监听，不断开连接
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
-      refCount--;
-      if (refCount <= 0) {
-        socket.disconnect();
-        globalSocket = null;
-        refCount = 0;
-      }
     };
   }, []);
 
