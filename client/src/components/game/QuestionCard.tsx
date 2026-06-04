@@ -8,12 +8,7 @@ interface QuestionCardProps {
   onSubmit: (optionIndex: number) => void;
 }
 
-const OPTION_COLORS = [
-  'from-blue-500 to-blue-600',
-  'from-orange-500 to-orange-600',
-  'from-green-500 to-green-600',
-  'from-purple-500 to-purple-600',
-];
+const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
 export default function QuestionCard({ question, disabled, showResult, onSubmit }: QuestionCardProps) {
   return (
@@ -29,18 +24,24 @@ export default function QuestionCard({ question, disabled, showResult, onSubmit 
         {question.options.map((option, idx) => {
           const isSelected = showResult?.selectedOption === idx;
           const isCorrect = showResult?.correctAnswer === idx;
-          let optionClass = `bg-gradient-to-r ${OPTION_COLORS[idx % 4]} text-white font-bold py-4 px-6 rounded-xl shadow-md transition-all duration-200`;
+          const label = question.type === 'judge' ? (idx === 0 ? '✓' : '✗') : OPTION_LABELS[idx];
+          let optionClass = 'bg-gray-100 text-gray-700 font-bold py-4 px-6 rounded-xl transition-all duration-200';
+          let labelClass = 'bg-gray-200 text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black';
 
           if (showResult) {
             if (isCorrect) {
-              optionClass = 'bg-gradient-to-r from-green-400 to-green-600 text-white font-bold py-4 px-6 rounded-xl shadow-md ring-4 ring-green-300';
+              optionClass = 'bg-green-500 text-white font-bold py-4 px-6 rounded-xl ring-4 ring-green-300';
+              labelClass = 'bg-white/20 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black';
             } else if (isSelected && !showResult.correct) {
-              optionClass = 'bg-gradient-to-r from-red-400 to-red-600 text-white font-bold py-4 px-6 rounded-xl shadow-md animate-shake';
+              optionClass = 'bg-red-500 text-white font-bold py-4 px-6 rounded-xl animate-shake';
+              labelClass = 'bg-white/20 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black';
             } else {
-              optionClass = 'bg-gray-200 text-gray-400 font-bold py-4 px-6 rounded-xl';
+              optionClass = 'bg-gray-100 text-gray-400 font-bold py-4 px-6 rounded-xl';
+              labelClass = 'bg-gray-200 text-gray-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black';
             }
           } else if (disabled) {
-            optionClass = 'bg-gray-300 text-gray-500 font-bold py-4 px-6 rounded-xl cursor-not-allowed';
+            optionClass = 'bg-gray-100 text-gray-400 font-bold py-4 px-6 rounded-xl cursor-not-allowed';
+            labelClass = 'bg-gray-200 text-gray-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black';
           }
 
           return (
@@ -48,12 +49,10 @@ export default function QuestionCard({ question, disabled, showResult, onSubmit 
               key={idx}
               onClick={() => !disabled && !showResult && onSubmit(idx)}
               disabled={disabled || !!showResult}
-              className={`${optionClass} ${!disabled && !showResult ? 'hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]' : ''} text-left`}
+              className={`${optionClass} ${!disabled && !showResult ? 'hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98]' : ''} text-left`}
             >
               <span className="inline-flex items-center gap-3">
-                <span className="bg-white/20 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black">
-                  {question.type === 'judge' ? (idx === 0 ? '✓' : '✗') : String.fromCharCode(65 + idx)}
-                </span>
+                <span className={labelClass}>{label}</span>
                 <span>{option.replace(/^[A-D][.、]\s*/, '')}</span>
               </span>
             </button>
