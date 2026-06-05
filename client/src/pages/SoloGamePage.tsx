@@ -26,11 +26,11 @@ export default function SoloGamePage() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
   const [countdownNumber, setCountdownNumber] = useState(3);
-  const [totalStartTime, setTotalStartTime] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
   const [error, setError] = useState('');
 
   const questionStartRef = useRef(Date.now());
+  const totalStartRef = useRef(0);
 
   // Fetch questions and start countdown
   const handleStart = useCallback(async (quizId: number | null, count: QuestionCount) => {
@@ -66,7 +66,7 @@ export default function SoloGamePage() {
         setSelectedOption(null);
         setTimeLeft(QUESTION_TIME);
         const now = Date.now();
-        setTotalStartTime(now);
+        totalStartRef.current = now;
         questionStartRef.current = now;
       }, 1000);
       return () => clearTimeout(timer);
@@ -82,13 +82,7 @@ export default function SoloGamePage() {
     setTimeLeft(QUESTION_TIME);
 
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft(prev => prev <= 1 ? 0 : prev - 1);
     }, 1000);
     return () => clearInterval(timer);
   }, [phase, answered, currentIndex]);
@@ -143,12 +137,12 @@ export default function SoloGamePage() {
         setSelectedOption(null);
         setTimeLeft(QUESTION_TIME);
       } else {
-        setTotalTime(Math.round((Date.now() - totalStartTime) / 1000));
+        setTotalTime(Math.round((Date.now() - totalStartRef.current) / 1000));
         setPhase('result');
       }
     }, RESULT_DELAY);
     return () => clearTimeout(timer);
-  }, [answered, phase, currentIndex, questions.length, totalStartTime]);
+  }, [answered, phase, currentIndex, questions.length]);
 
   const handlePlayAgain = () => {
     setPhase('lobby');
