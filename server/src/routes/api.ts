@@ -167,6 +167,8 @@ apiRouter.post('/solo/questions', (req: Request, res: Response) => {
   const validCount = [10, 20, 30].includes(count) ? count : 10;
   const db = getDb();
 
+  // Fetch extra rows to account for ones with malformed data
+  const fetchCount = validCount * 3;
   let questions: any[];
   if (quizId) {
     const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(quizId);
@@ -176,17 +178,23 @@ apiRouter.post('/solo/questions', (req: Request, res: Response) => {
     }
     questions = db.prepare(
       'SELECT * FROM questions WHERE quiz_id = ? ORDER BY RANDOM() LIMIT ?'
-    ).all(quizId, validCount);
+    ).all(quizId, fetchCount);
   } else {
     questions = db.prepare(
       'SELECT * FROM questions ORDER BY RANDOM() LIMIT ?'
-    ).all(validCount);
+    ).all(fetchCount);
   }
 
-  const parsed = questions.map((q: any) => ({
-    ...q,
-    options: JSON.parse(q.options),
-  }));
+  const parsed = questions
+    .map((q: any) => {
+      try {
+        return { ...q, options: JSON.parse(q.options) };
+      } catch {
+        return null;
+      }
+    })
+    .filter((q: any): q is NonNullable<typeof q> => q !== null)
+    .slice(0, validCount);
 
   res.json({ questions: parsed, totalQuestions: parsed.length });
 });
