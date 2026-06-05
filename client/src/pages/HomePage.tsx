@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import { getMistakes } from '../utils/mistakes';
 
 const STORAGE_KEY = 'quizpk_room';
 const NAME_KEY = 'quizpk_name';
@@ -33,6 +34,7 @@ export default function HomePage() {
   const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || '');
   const [savedRoom, setSavedRoom] = useState<SavedRoom | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  const [mistakeCount, setMistakeCount] = useState(() => getMistakes().length);
 
   // Check for saved room on mount
   useEffect(() => {
@@ -46,6 +48,13 @@ export default function HomePage() {
   useEffect(() => {
     localStorage.setItem(NAME_KEY, playerName);
   }, [playerName]);
+
+  useEffect(() => {
+    const refreshMistakeCount = () => setMistakeCount(getMistakes().length);
+    refreshMistakeCount();
+    window.addEventListener('focus', refreshMistakeCount);
+    return () => window.removeEventListener('focus', refreshMistakeCount);
+  }, []);
 
   const handleCreate = () => {
     const cleanup = on('room-created', (data) => {
@@ -61,6 +70,7 @@ export default function HomePage() {
           creator: true,
           playerIndex: data.playerIndex,
           players: data.players,
+          roomState: data.state,
           playerName: playerName || '玩家A',
         },
       });
@@ -93,6 +103,7 @@ export default function HomePage() {
           joined: true,
           playerIndex: data.playerIndex,
           players: data.players,
+          roomState: data.state,
           playerName: nameToUse,
         },
       });
@@ -127,6 +138,7 @@ export default function HomePage() {
           reconnected: true,
           playerIndex: data.playerIndex,
           players: data.players,
+          roomState: data.state,
           phase: data.phase,
           playerName: savedRoom.playerName,
         },
@@ -153,6 +165,11 @@ export default function HomePage() {
   const handleDismissSaved = () => {
     clearSavedRoom();
     setSavedRoom(null);
+  };
+
+  const handleMistakePractice = () => {
+    if (mistakeCount === 0) return;
+    navigate('/mistakes', { state: { start: true } });
   };
 
   return (
@@ -193,6 +210,32 @@ export default function HomePage() {
       )}
 
       <div className="flex flex-col items-center gap-6">
+        <div className="w-full max-w-xs bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <Link
+              to="/mistakes"
+              className="flex-1 min-w-0 px-4 py-2.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-purple-50 hover:text-purple-600 transition-colors"
+            >
+              错题回顾
+              <span className="ml-2 text-xs text-gray-400">{mistakeCount}题</span>
+            </Link>
+            <button
+              onClick={handleMistakePractice}
+              disabled={mistakeCount === 0}
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              错题考试
+            </button>
+          </div>
+        </div>
+
+        <Link
+          to="/solo"
+          className="w-full max-w-xs px-8 py-4 bg-gradient-to-r from-teal-500 to-cyan-600 text-white text-xl font-bold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 block text-center"
+        >
+          📝 单人答题
+        </Link>
+
         {/* Player name input */}
         <div className="w-full max-w-xs">
           <input

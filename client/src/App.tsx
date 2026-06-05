@@ -4,6 +4,8 @@ import { lazy, Suspense } from 'react';
 const HomePage = lazy(() => import('./pages/HomePage'));
 const GamePage = lazy(() => import('./pages/GamePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const MistakePracticePage = lazy(() => import('./pages/MistakePracticePage'));
+const SoloGamePage = lazy(() => import('./pages/SoloGamePage'));
 
 function Loading() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/game/:roomId" element={<GamePage />} />
+        <Route path="/mistakes" element={<MistakePracticePage />} />
+        <Route path="/solo" element={<SoloGamePage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </Suspense>
