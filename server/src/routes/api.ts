@@ -167,34 +167,45 @@ apiRouter.post('/solo/questions', (req: Request, res: Response) => {
   const validCount = [10, 20, 30].includes(count) ? count : 10;
   const db = getDb();
 
-  // Fetch extra rows to account for ones with malformed data
-  const fetchCount = validCount * 3;
+  // Fetch ALL questions then filter — many records have malformed options data
+  // so a fixed multiplier is unreliable. The table is small (~1600 rows).
   let questions: any[];
+  let totalInQuiz: number | null = null;
+
   if (quizId) {
     const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(quizId);
     if (!quiz) {
       res.status(404).json({ error: '题库不存在' });
       return;
     }
+    totalInQuiz = db.prepare('SELECT COUNT(*) as c FROM questions WHERE quiz_id = ?').get(quizId) as any;
     questions = db.prepare(
-      'SELECT * FROM questions WHERE quiz_id = ? ORDER BY RANDOM() LIMIT ?'
-    ).all(quizId, fetchCount);
+      'SELECT * FROM questions WHERE quiz_id = ? ORDER BY RANDOM()'
+    ).all(quizId);
   } else {
     questions = db.prepare(
-      'SELECT * FROM questions ORDER BY RANDOM() LIMIT ?'
-    ).all(fetchCount);
+      'SELECT * FROM questions ORDER BY RANDOM()'
+    ).all();
   }
 
   const parsed = questions
     .map((q: any) => {
       try {
-        return { ...q, options: JSON.parse(q.options) };
+        const options = JSON.parse(q.options);
+        if (!Array.isArray(options)) return null;
+        return { ...q, options };
       } catch {
         return null;
       }
     })
     .filter((q: any): q is NonNullable<typeof q> => q !== null)
     .slice(0, validCount);
+
+  // Distinguish: quiz has questions but all malformed vs truly empty
+  if (parsed.length === 0 && totalInQuiz !== null && (totalInQuiz as any).c > 0) {
+    res.status(422).json({ error: '该题库数据格式异常，暂时无法使用' });
+    return;
+  }
 
   res.json({ questions: parsed, totalQuestions: parsed.length });
 });

@@ -41,7 +41,10 @@ export default function SoloGamePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quizId, count }),
       });
-      if (!res.ok) throw new Error('获取题目失败');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '获取题目失败');
+      }
       const data = await res.json();
       if (!data.questions?.length) throw new Error('题库中没有题目');
 
