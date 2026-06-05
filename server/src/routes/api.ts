@@ -160,3 +160,33 @@ apiRouter.get('/quizzes/:quizId/stats', (req: Request, res: Response) => {
   }
   res.json(stats);
 });
+
+// POST /api/solo/questions
+apiRouter.post('/solo/questions', (req: Request, res: Response) => {
+  const { quizId, count } = req.body as { quizId?: number | null; count: number };
+  const validCount = [10, 20, 30].includes(count) ? count : 10;
+  const db = getDb();
+
+  let questions: any[];
+  if (quizId) {
+    const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(quizId);
+    if (!quiz) {
+      res.status(404).json({ error: '题库不存在' });
+      return;
+    }
+    questions = db.prepare(
+      'SELECT * FROM questions WHERE quiz_id = ? ORDER BY RANDOM() LIMIT ?'
+    ).all(quizId, validCount);
+  } else {
+    questions = db.prepare(
+      'SELECT * FROM questions ORDER BY RANDOM() LIMIT ?'
+    ).all(validCount);
+  }
+
+  const parsed = questions.map((q: any) => ({
+    ...q,
+    options: JSON.parse(q.options),
+  }));
+
+  res.json({ questions: parsed, totalQuestions: parsed.length });
+});
