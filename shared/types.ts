@@ -53,6 +53,7 @@ export interface Room {
   answeredBy: [boolean, boolean];
   answers: AnswerRecord[];
   gameStartedAt: number | null;
+  playAgainFlags: [boolean, boolean];
   createdAt: number;
 }
 
@@ -95,6 +96,7 @@ export interface ServerEvents {
   'opponent-reconnected': () => void;
   'reconnected': (data: { roomId: string; playerIndex: number; players: (Player | null)[]; phase: string; state: RoomStatePayload }) => void;
   'room-reset': (players: (Player | null)[]) => void;
+  'opponent-play-again': () => void;
 }
 
 export interface AnswerResultPayload {

@@ -10,9 +10,10 @@ interface ResultScreenProps {
   players: (Player | null)[];
   onPlayAgain: () => void;
   onGoHome: () => void;
+  opponentWantsPlayAgain: boolean;
 }
 
-export default function ResultScreen({ result, playerIndex, players, onPlayAgain, onGoHome }: ResultScreenProps) {
+export default function ResultScreen({ result, playerIndex, players, onPlayAgain, onGoHome, opponentWantsPlayAgain }: ResultScreenProps) {
   const [showReport, setShowReport] = useState(false);
   const [sharing, setSharing] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -182,12 +183,21 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
         >
           {sharing ? '⏳ 生成中...' : '📤 分享战绩'}
         </button>
-        <button
-          onClick={onPlayAgain}
-          className="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg"
-        >
-          再来一局
-        </button>
+        {opponentWantsPlayAgain ? (
+          <button
+            onClick={onPlayAgain}
+            className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg animate-pulse"
+          >
+            🎯 对手想再来！点击开始
+          </button>
+        ) : (
+          <button
+            onClick={onPlayAgain}
+            className="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg"
+          >
+            再来一局
+          </button>
+        )}
         <button
           onClick={onGoHome}
           className="px-8 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors"

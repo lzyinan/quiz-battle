@@ -73,6 +73,7 @@ export default function GamePage() {
   const [myAnswered, setMyAnswered] = useState(false);
   const [opponentAnswered, setOpponentAnswered] = useState(false);
   const [gameResult, setGameResult] = useState<GameOverPayload | null>(initialRoomState?.gameOver ?? null);
+  const [opponentWantsPlayAgain, setOpponentWantsPlayAgain] = useState(false);
   const [error, setError] = useState('');
 
   const applyRoomState = useCallback((state: RoomStatePayload) => {
@@ -227,6 +228,11 @@ export default function GamePage() {
     return on('opponent-reconnected', () => { setError(''); });
   }, [on]);
 
+  // Listen for opponent wants to play again
+  useEffect(() => {
+    return on('opponent-play-again', () => { setOpponentWantsPlayAgain(true); });
+  }, [on]);
+
   // Listen for room reset (play again)
   useEffect(() => {
     return on('room-reset', (updatedPlayers) => {
@@ -241,6 +247,7 @@ export default function GamePage() {
       setSelectedQuiz(null);
       setQuestionCount(10);
       setError('');
+      setOpponentWantsPlayAgain(false);
     });
   }, [on]);
 
@@ -266,6 +273,7 @@ export default function GamePage() {
   }, [currentQuestion, myAnswered, emit, questionIndex]);
 
   const handlePlayAgain = useCallback(() => {
+    setOpponentWantsPlayAgain(false); // clear stale flag
     emit('play-again');
   }, [emit]);
 
@@ -294,7 +302,7 @@ export default function GamePage() {
         </div>
       )}
       {phase === 'result' && gameResult && (
-        <ResultScreen result={gameResult} playerIndex={playerIndex} players={players} onPlayAgain={handlePlayAgain} onGoHome={handleGoHome} />
+        <ResultScreen result={gameResult} playerIndex={playerIndex} players={players} onPlayAgain={handlePlayAgain} onGoHome={handleGoHome} opponentWantsPlayAgain={opponentWantsPlayAgain} />
       )}
       {error && phase !== 'lobby' && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 bg-yellow-100 text-yellow-700 rounded-full shadow-lg text-sm font-medium">{error}</div>

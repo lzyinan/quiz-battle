@@ -74,10 +74,23 @@ export function registerSocketHandlers(io: Server): void {
       const room = RoomManager.findRoomByPlayer(socket.id);
       if (!room || room.status !== 'finished') return;
 
-      RoomManager.resetRoom(room);
-      io.to(room.id).emit('room-reset', RoomManager.getPlayersSnapshot(room));
-      emitRoomState(io, room);
-      console.log(`[Room] 房间 ${room.id} 再来一局`);
+      const playerIndex = room.players[0]?.id === socket.id ? 0 : 1;
+      // If already flagged, ignore
+      if (room.playAgainFlags[playerIndex]) return;
+
+      const bothReady = RoomManager.setPlayAgainFlag(room, playerIndex);
+      if (bothReady) {
+        // Both players want to play again → actually reset
+        RoomManager.resetRoom(room);
+        io.to(room.id).emit('room-reset', RoomManager.getPlayersSnapshot(room));
+        emitRoomState(io, room);
+        console.log(`[Room] 房间 ${room.id} 再来一局`);
+      } else {
+        // Only this player wants to play again → notify opponent
+        socket.to(room.id).emit('opponent-play-again');
+        emitRoomState(io, room);
+        console.log(`[Room] 房间 ${room.id} 玩家 ${socket.data.nickname} 想再来一局，等待对手`);
+      }
     });
 
     socket.on('select-quiz', (quizId: number | null) => {

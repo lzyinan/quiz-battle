@@ -19,7 +19,7 @@ export function createRoom(playerId: string, userId: number, playerName: string)
   const room: Room = {
     id, players: [player, undefined], status: 'waiting', quizId: null, questionCount: 10,
     questions: [], currentQuestion: 0, scores: [0, 0], answeredBy: [false, false],
-    answers: [], createdAt: Date.now(), gameStartedAt: null,
+    answers: [], createdAt: Date.now(), gameStartedAt: null, playAgainFlags: [false, false],
   };
   rooms.set(id, room);
   scheduleEmptyRoomCleanup(id);
@@ -53,6 +53,12 @@ export function reconnectPlayer(roomId: string, playerIndex: number, newSocketId
   return { room, playerIndex };
 }
 
+/** Mark a player's play-again intent. Returns true if BOTH players have flagged. */
+export function setPlayAgainFlag(room: Room, playerIndex: number): boolean {
+  room.playAgainFlags[playerIndex] = true;
+  return room.playAgainFlags[0] && room.playAgainFlags[1];
+}
+
 /** Reset room for a new game */
 export function resetRoom(room: Room): void {
   room.status = 'readying';
@@ -64,6 +70,7 @@ export function resetRoom(room: Room): void {
   room.gameStartedAt = null;
   room.quizId = null;
   room.questionCount = 10;
+  room.playAgainFlags = [false, false];
   // Reset ready status
   room.players[0].ready = false;
   if (room.players[1]) room.players[1].ready = false;
