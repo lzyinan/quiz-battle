@@ -9,7 +9,7 @@ interface SoloReportProps {
   answers: SoloAnswerRecord[];
 }
 
-export default function SoloReport({ score, totalTime, questions, answers }: SoloReportProps) {
+export default function SoloReport({ score, totalTime, answers }: SoloReportProps) {
   const stats = computeSoloStats(answers, totalTime, score);
   const minutes = Math.floor(stats.totalTime / 60);
   const seconds = stats.totalTime % 60;
