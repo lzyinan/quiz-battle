@@ -47,7 +47,7 @@ export default function GamePage() {
   });
   const [playerIndex, setPlayerIndex] = useState<number>(savedPlayerIndex);
   const [players, setPlayers] = useState<(Player | null)[]>(
-    initialPlayers ?? (isCreator ? [{ id: '', name: '玩家A', playerIndex: 0, ready: false }, null] : [])
+    initialPlayers ?? (isCreator ? [{ id: '', userId: 0, name: '玩家A', playerIndex: 0, ready: false }, null] : [])
   );
   const [selectedQuiz, setSelectedQuiz] = useState<number | null>(initialRoomState?.quizId ?? null);
   const [questionCount, setQuestionCount] = useState<QuestionCount>(initialRoomState?.questionCount ?? 10);
