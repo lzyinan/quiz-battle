@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { GameOverPayload, Player } from '../../../../shared/types';
 import BattleReport from '../report/BattleReport';
+import BattleShareCard from '../share/BattleShareCard';
+import { captureAndDownload } from '../../utils/shareUtils';
 
 interface ResultScreenProps {
   result: GameOverPayload;
@@ -12,6 +14,8 @@ interface ResultScreenProps {
 
 export default function ResultScreen({ result, playerIndex, players, onPlayAgain, onGoHome }: ResultScreenProps) {
   const [showReport, setShowReport] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const { scores, winner, answers, questions } = result;
   const myScore = scores[playerIndex];
   const opponentScore = scores[1 - playerIndex];
@@ -20,6 +24,16 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
 
   const myName = players[playerIndex]?.name ?? '你';
   const opponentName = players[1 - playerIndex]?.name ?? '对手';
+
+  const handleShare = async () => {
+    setSharing(true);
+    await new Promise(r => setTimeout(r, 100));
+    const el = shareCardRef.current;
+    if (el) {
+      await captureAndDownload(el, `知识PK-${myName}vs${opponentName}.png`);
+    }
+    setSharing(false);
+  };
 
   const answerMap = new Map<number, { playerIndex: number; selectedOption: number; correct: boolean }[]>();
   for (const a of answers) {
@@ -162,6 +176,13 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
           {showReport ? '📋 答题回顾' : '📊 查看报告'}
         </button>
         <button
+          onClick={handleShare}
+          disabled={sharing}
+          className="px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50"
+        >
+          {sharing ? '⏳ 生成中...' : '📤 分享战绩'}
+        </button>
+        <button
           onClick={onPlayAgain}
           className="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg"
         >
@@ -173,6 +194,11 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
         >
           返回首页
         </button>
+      </div>
+
+      {/* Hidden share card for capture */}
+      <div className="fixed left-[-9999px] top-0">
+        <BattleShareCard ref={shareCardRef} result={result} playerIndex={playerIndex} players={players} />
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { Question, SoloAnswerRecord } from '../../../../shared/types';
 import SoloReport from '../report/SoloReport';
+import SoloShareCard from '../share/SoloShareCard';
+import { captureAndDownload } from '../../utils/shareUtils';
 
 interface SoloResultScreenProps {
   score: number;
@@ -13,6 +15,18 @@ interface SoloResultScreenProps {
 
 export default function SoloResultScreen({ score, totalTime, questions, answers, onPlayAgain, onGoHome }: SoloResultScreenProps) {
   const [showReport, setShowReport] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = async () => {
+    setSharing(true);
+    await new Promise(r => setTimeout(r, 100));
+    const el = shareCardRef.current;
+    if (el) {
+      await captureAndDownload(el, `答题成绩-${score}分.png`);
+    }
+    setSharing(false);
+  };
   const correctCount = answers.filter(a => a.correct).length;
   const accuracy = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
   const minutes = Math.floor(totalTime / 60);
@@ -128,6 +142,13 @@ export default function SoloResultScreen({ score, totalTime, questions, answers,
           {showReport ? '📋 答题回顾' : '📊 查看报告'}
         </button>
         <button
+          onClick={handleShare}
+          disabled={sharing}
+          className="px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50"
+        >
+          {sharing ? '⏳ 生成中...' : '📤 分享成绩'}
+        </button>
+        <button
           onClick={onPlayAgain}
           className="px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg"
         >
@@ -139,6 +160,10 @@ export default function SoloResultScreen({ score, totalTime, questions, answers,
         >
           返回首页
         </button>
+      </div>
+
+      <div className="fixed left-[-9999px] top-0">
+        <SoloShareCard ref={shareCardRef} score={score} totalTime={totalTime} questions={questions} answers={answers} />
       </div>
     </div>
   );
