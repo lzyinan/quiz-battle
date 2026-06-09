@@ -14,10 +14,10 @@ function emitRoomStateTo(socket: Socket, room: Room): void {
 
 export function registerSocketHandlers(io: Server): void {
   io.on('connection', (socket: Socket) => {
-    console.log(`[Socket] 连接: ${socket.id}`);
+    console.log(`[Socket] 连接: ${socket.id} (${socket.data.nickname})`);
 
-    socket.on('create-room', (data: { playerName: string }) => {
-      const room = RoomManager.createRoom(socket.id, data.playerName || '玩家A');
+    socket.on('create-room', () => {
+      const room = RoomManager.createRoom(socket.id, socket.data.userId, socket.data.nickname);
       socket.join(room.id);
       const players = RoomManager.getPlayersSnapshot(room);
       const state = RoomManager.getRoomStatePayload(room);
@@ -26,8 +26,8 @@ export function registerSocketHandlers(io: Server): void {
       console.log(`[Room] 创建: ${room.id}`);
     });
 
-    socket.on('join-room', (data: { roomId: string; playerName: string }) => {
-      const result = RoomManager.joinRoom(data.roomId, socket.id, data.playerName || '玩家B');
+    socket.on('join-room', (data: { roomId: string }) => {
+      const result = RoomManager.joinRoom(data.roomId, socket.id, socket.data.userId, socket.data.nickname);
       if ('error' in result) { socket.emit('room-error', result.error); return; }
       socket.join(data.roomId);
       const { room, playerIndex } = result;
@@ -39,8 +39,8 @@ export function registerSocketHandlers(io: Server): void {
       console.log(`[Room] ${socket.id} 加入房间 ${data.roomId}`);
     });
 
-    socket.on('reconnect-room', (data: { roomId: string; playerIndex: number; playerName: string }) => {
-      const result = RoomManager.reconnectPlayer(data.roomId, data.playerIndex, socket.id);
+    socket.on('reconnect-room', (data: { roomId: string; playerIndex: number }) => {
+      const result = RoomManager.reconnectPlayer(data.roomId, data.playerIndex, socket.id, socket.data.userId);
       if ('error' in result) {
         socket.emit('room-error', result.error);
         return;
@@ -50,7 +50,6 @@ export function registerSocketHandlers(io: Server): void {
       const players = RoomManager.getPlayersSnapshot(room);
       const state = RoomManager.getRoomStatePayload(room);
 
-      // Notify the reconnecting player
       socket.emit('reconnected', {
         roomId: data.roomId,
         playerIndex: data.playerIndex,
@@ -60,7 +59,6 @@ export function registerSocketHandlers(io: Server): void {
       });
       emitRoomStateTo(socket, room);
 
-      // Notify opponent
       socket.to(data.roomId).emit('opponent-reconnected');
       emitRoomState(io, room);
       console.log(`[Room] ${socket.id} 重连房间 ${data.roomId}`);
