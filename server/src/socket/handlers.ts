@@ -151,6 +151,7 @@ export function registerSocketHandlers(io: Server): void {
         if (!currentRoom || currentRoom.status !== 'playing' || currentRoom.currentQuestion !== data.questionIndex) return;
         const next = RoomManager.advanceToNextQuestion(currentRoom);
         if (next === null) {
+          RoomManager.recordGameResult(currentRoom);
           const gameOver = RoomManager.getGameOverPayload(currentRoom);
           io.to(currentRoom.id).emit('game-over', gameOver);
           emitRoomState(io, currentRoom);
@@ -179,6 +180,7 @@ export function registerSocketHandlers(io: Server): void {
           if (currentRoom && currentRoom.status !== 'finished') {
             if (currentRoom.players[disconnectedIndex]?.id !== socket.id) return;
             const winner = 1 - disconnectedIndex;
+            RoomManager.recordGameResult(currentRoom);
             io.to(room.id).emit('game-over', { ...RoomManager.getGameOverPayload(currentRoom), winner });
             RoomManager.deleteRoom(room.id);
           }

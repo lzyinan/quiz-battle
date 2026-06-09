@@ -242,3 +242,30 @@ export function getRoomsInfo() {
     createdAt: room.createdAt,
   }));
 }
+
+export function recordGameResult(room: Room): void {
+  if (!room.gameStartedAt) return;
+  const p1 = room.players[0];
+  const p2 = room.players[1];
+  if (!p1 || !p2) return;
+
+  const [s1, s2] = room.scores;
+  let winner: number | null;
+  if (s1 > s2) winner = 0; else if (s2 > s1) winner = 1; else winner = null;
+
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO game_records (room_id, player1_id, player2_id, player1_name, player2_name, player1_score, player2_score, winner, question_count, quiz_id, answers, duration_seconds)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    room.id,
+    p1.userId, p2.userId,
+    p1.name, p2.name,
+    s1, s2,
+    winner,
+    room.questions.length,
+    room.quizId,
+    JSON.stringify(room.answers),
+    Math.round((Date.now() - room.gameStartedAt) / 1000),
+  );
+}
