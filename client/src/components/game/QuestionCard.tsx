@@ -1,4 +1,5 @@
 import type { Question, Player } from '../../../../shared/types';
+import FavoriteButton from '../common/FavoriteButton';
 
 interface QuestionCardProps {
   question: Question;
@@ -27,10 +28,15 @@ export default function QuestionCard({ question, myAnswered, opponentAnswered, s
   return (
     <div className="w-full max-w-lg mx-auto">
       <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
-        <div className="text-xs text-purple-500 font-medium mb-2">
-          {question.type === 'judge' ? '✅ 判断题' : '📝 单选题'}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="text-xs text-purple-500 font-medium mb-2">
+              {question.type === 'judge' ? '✅ 判断题' : '📝 单选题'}
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 leading-relaxed">{question.content}</h2>
+          </div>
+          {showResult && <FavoriteButton question={question} />}
         </div>
-        <h2 className="text-lg sm:text-xl font-bold text-gray-800 leading-relaxed">{question.content}</h2>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:gap-3">
