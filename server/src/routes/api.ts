@@ -209,3 +209,48 @@ apiRouter.post('/solo/questions', (req: Request, res: Response) => {
 
   res.json({ questions: parsed, totalQuestions: parsed.length });
 });
+
+// POST /api/quizzes/:quizId/import
+apiRouter.post('/quizzes/:quizId/import', (req: Request, res: Response) => {
+  const { questions } = req.body as { questions: { type: string; content: string; options: string[]; answer: number }[] };
+  if (!Array.isArray(questions) || questions.length === 0) {
+    res.status(400).json({ error: '题目列表不能为空' });
+    return;
+  }
+  const db = getDb();
+  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(req.params.quizId);
+  if (!quiz) {
+    res.status(404).json({ error: '题库不存在' });
+    return;
+  }
+
+  const errors: string[] = [];
+  const valid: { type: string; content: string; options: string[]; answer: number }[] = [];
+
+  questions.forEach((q, i) => {
+    if (!q.content?.trim()) { errors.push(`第${i + 1}题：题目内容不能为空`); return; }
+    if (!Array.isArray(q.options) || q.options.filter((o: string) => o?.trim()).length < 2) { errors.push(`第${i + 1}题：至少需要2个有效选项`); return; }
+    if (typeof q.answer !== 'number' || q.answer < 0 || q.answer >= q.options.length) { errors.push(`第${i + 1}题：答案索引无效`); return; }
+    if (q.type !== 'single' && q.type !== 'judge') { errors.push(`第${i + 1}题：类型必须是 single 或 judge`); return; }
+    valid.push({ type: q.type, content: q.content.trim(), options: q.options.map((o: string) => o.trim()), answer: q.answer });
+  });
+
+  if (valid.length === 0) {
+    res.status(400).json({ success: 0, failed: questions.length, errors });
+    return;
+  }
+
+  const insertMany = db.transaction((items: typeof valid) => {
+    const stmt = db.prepare('INSERT INTO questions (quiz_id, type, content, options, answer) VALUES (?, ?, ?, ?, ?)');
+    for (const q of items) {
+      stmt.run(req.params.quizId, q.type, q.content, JSON.stringify(q.options), q.answer);
+    }
+  });
+
+  try {
+    insertMany(valid);
+    res.json({ success: valid.length, failed: questions.length - valid.length, errors });
+  } catch (err: any) {
+    res.status(500).json({ error: '导入失败：' + err.message });
+  }
+});
