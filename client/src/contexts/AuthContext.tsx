@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { AuthUser } from '../../../shared/types';
+import { reconnectSocket } from '../hooks/useSocket';
 
 const TOKEN_KEY = 'quizpk_token';
 
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     localStorage.setItem(TOKEN_KEY, data.token);
     setUser(data.user);
+    reconnectSocket();
   }, []);
 
   const logout = useCallback(() => {
