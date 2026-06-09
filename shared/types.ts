@@ -32,6 +32,7 @@ export interface QuestionInput {
 
 export interface Player {
   id: string;
+  userId: number;
   name: string;
   playerIndex: 0 | 1;
   ready: boolean;
@@ -51,6 +52,7 @@ export interface Room {
   scores: [number, number];
   answeredBy: [boolean, boolean];
   answers: AnswerRecord[];
+  gameStartedAt: number | null;
   createdAt: number;
 }
 
@@ -64,9 +66,9 @@ export interface AnswerRecord {
 // ==================== Socket 事件类型 ====================
 
 export interface ClientEvents {
-  'create-room': (data: { playerName: string }) => void;
-  'join-room': (data: { roomId: string; playerName: string }) => void;
-  'reconnect-room': (data: { roomId: string; playerIndex: number; playerName: string }) => void;
+  'create-room': () => void;
+  'join-room': (data: { roomId: string }) => void;
+  'reconnect-room': (data: { roomId: string; playerIndex: number }) => void;
   'sync-room': (data: { roomId: string }) => void;
   'select-quiz': (quizId: number | null) => void;
   'select-question-count': (count: QuestionCount) => void;
@@ -156,4 +158,39 @@ export interface SoloAnswerRecord {
   selectedOption: number | null;
   correct: boolean;
   timeSpent: number;
+}
+
+// ==================== 用户认证 ====================
+
+export interface AuthUser {
+  id: number;
+  nickname: string;
+}
+
+export interface LoginResponse {
+  user: AuthUser;
+  token: string;
+}
+
+// ==================== 战绩历史 ====================
+
+export interface GameRecordItem {
+  id: number;
+  opponentName: string;
+  myScore: number;
+  opponentScore: number;
+  result: 'win' | 'lose' | 'draw';
+  questionCount: number;
+  durationSeconds: number;
+  createdAt: string;
+}
+
+export interface UserStats {
+  totalGames: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  totalScore: number;
+  avgScore: number;
 }

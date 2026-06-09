@@ -1,11 +1,14 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
+const LoginPage = lazy(() => import('./pages/LoginPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const GamePage = lazy(() => import('./pages/GamePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const MistakePracticePage = lazy(() => import('./pages/MistakePracticePage'));
 const SoloGamePage = lazy(() => import('./pages/SoloGamePage'));
+const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 
 function Loading() {
   return (
@@ -15,16 +18,33 @@ function Loading() {
   );
 }
 
-export default function App() {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Loading />;
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function AppRoutes() {
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/game/:roomId" element={<GamePage />} />
-        <Route path="/mistakes" element={<MistakePracticePage />} />
-        <Route path="/solo" element={<SoloGamePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+        <Route path="/game/:roomId" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+        <Route path="/mistakes" element={<ProtectedRoute><MistakePracticePage /></ProtectedRoute>} />
+        <Route path="/solo" element={<ProtectedRoute><SoloGamePage /></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </Suspense>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }

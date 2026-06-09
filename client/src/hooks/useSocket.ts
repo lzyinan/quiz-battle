@@ -4,14 +4,33 @@ import type { ServerEvents, ClientEvents } from '../../../shared/types';
 
 type GameSocket = Socket<ServerEvents, ClientEvents>;
 
-// 全局单例 — 整个应用生命周期共享同一个连接
-// 页面切换时不断开，只有浏览器关闭/刷新才断开
+const TOKEN_KEY = 'quizpk_token';
+
 let globalSocket: GameSocket | null = null;
 
-function getSocket(): GameSocket {
+function createSocket(): GameSocket {
+  const token = localStorage.getItem(TOKEN_KEY);
+  return io({
+    autoConnect: !!token,
+    path: '/pk/socket.io',
+    auth: { token },
+  });
+}
+
+export function getSocket(): GameSocket {
   if (!globalSocket) {
-    globalSocket = io({ autoConnect: true, path: '/pk/socket.io' });
+    globalSocket = createSocket();
   }
+  return globalSocket;
+}
+
+/** Disconnect and recreate socket (e.g. after login) */
+export function reconnectSocket(): GameSocket {
+  if (globalSocket) {
+    globalSocket.disconnect();
+  }
+  globalSocket = createSocket();
+  globalSocket.connect();
   return globalSocket;
 }
 
@@ -29,7 +48,6 @@ export function useSocket() {
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
 
-    // 只移除事件监听，不断开连接
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
