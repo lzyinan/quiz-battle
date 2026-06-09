@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Quiz, Question, QuestionType } from '../../../shared/types';
 import { API_BASE } from '../utils/api';
+import ImportPreviewModal from '../components/admin/ImportPreviewModal';
 
 interface QuizWithCount extends Quiz {
   questionCount: number;
@@ -19,6 +20,7 @@ export default function AdminPage() {
   const [showForm, setShowForm] = useState(false);
   // Mobile tab: 'quizzes' shows quiz list, 'questions' shows question editor
   const [mobileTab, setMobileTab] = useState<'quizzes' | 'questions'>('quizzes');
+  const [showImport, setShowImport] = useState(false);
 
   const loadQuizzes = async () => {
     const res = await fetch(`${API_BASE}/quizzes`);
@@ -95,6 +97,20 @@ export default function AdminPage() {
     if (selectedQuiz) loadQuestions(selectedQuiz);
   };
 
+  const handleImport = async (questions: { type: string; content: string; options: string[]; answer: number }[]) => {
+    const res = await fetch(`${API_BASE}/quizzes/${selectedQuiz}/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || '导入失败');
+    }
+    if (selectedQuiz) loadQuestions(selectedQuiz);
+    loadQuizzes();
+  };
+
   const selectedQuizData = quizzes.find(q => q.id === selectedQuiz);
 
   // Quiz list panel (shared between mobile & desktop)
@@ -166,6 +182,14 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {!showForm && (
+        <button
+          onClick={() => setShowImport(true)}
+          className="w-full py-3 border-2 border-dashed border-teal-200 text-teal-500 rounded-xl hover:border-teal-400 hover:text-teal-600 transition-colors text-sm sm:text-base mb-3"
+        >
+          📥 批量导入（CSV）
+        </button>
+      )}
       {!showForm ? (
         <button onClick={() => { setEditing({ ...EMPTY_QUESTION }); setShowForm(true); }} className="w-full py-3 border-2 border-dashed border-purple-200 text-purple-400 rounded-xl hover:border-purple-400 hover:text-purple-600 transition-colors text-sm sm:text-base">
           + 添加题目
@@ -244,6 +268,12 @@ export default function AdminPage() {
           <div>{questionPanel}</div>
         </div>
       </div>
+      {showImport && selectedQuiz && (
+        <ImportPreviewModal
+          onImport={handleImport}
+          onClose={() => setShowImport(false)}
+        />
+      )}
     </div>
   );
 }
