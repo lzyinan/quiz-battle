@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../contexts/AuthContext';
 import { getMistakes } from '../utils/mistakes';
+import { getFavorites } from '../utils/favorites';
 
 const STORAGE_KEY = 'quizpk_room';
 
@@ -34,6 +35,7 @@ export default function HomePage() {
   const [savedRoom, setSavedRoom] = useState<SavedRoom | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [mistakeCount, setMistakeCount] = useState(() => getMistakes().length);
+  const [favoriteCount, setFavoriteCount] = useState(() => getFavorites().length);
 
   useEffect(() => {
     const saved = getSavedRoom();
@@ -41,10 +43,13 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const refreshMistakeCount = () => setMistakeCount(getMistakes().length);
-    refreshMistakeCount();
-    window.addEventListener('focus', refreshMistakeCount);
-    return () => window.removeEventListener('focus', refreshMistakeCount);
+    const refresh = () => {
+      setMistakeCount(getMistakes().length);
+      setFavoriteCount(getFavorites().length);
+    };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
   }, []);
 
   const handleCreate = () => {
@@ -194,6 +199,14 @@ export default function HomePage() {
             </button>
           </div>
         </div>
+
+        <Link
+          to="/favorites"
+          className="w-full max-w-xs px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xl font-bold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 block text-center"
+        >
+          ⭐ 我的收藏
+          <span className="ml-2 text-sm opacity-80">{favoriteCount}题</span>
+        </Link>
 
         <div className="w-full max-w-xs flex gap-3">
           <Link

@@ -8,6 +8,9 @@ const GamePage = lazy(() => import('./pages/GamePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const MistakePracticePage = lazy(() => import('./pages/MistakePracticePage'));
 const SoloGamePage = lazy(() => import('./pages/SoloGamePage'));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
+const FavoritePracticePage = lazy(() => import('./pages/FavoritePracticePage'));
+const ChallengePage = lazy(() => import('./pages/ChallengePage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 
 function Loading() {
@@ -33,6 +36,9 @@ function AppRoutes() {
         <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
         <Route path="/game/:roomId" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
         <Route path="/mistakes" element={<ProtectedRoute><MistakePracticePage /></ProtectedRoute>} />
+        <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/favorites/practice" element={<FavoritePracticePage />} />
+        <Route path="/challenge/:token" element={<ChallengePage />} />
         <Route path="/solo" element={<ProtectedRoute><SoloGamePage /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminPage />} />
