@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { GameOverPayload, Player } from '../../../../shared/types';
+import BattleReport from '../report/BattleReport';
 
 interface ResultScreenProps {
   result: GameOverPayload;
@@ -9,6 +11,7 @@ interface ResultScreenProps {
 }
 
 export default function ResultScreen({ result, playerIndex, players, onPlayAgain, onGoHome }: ResultScreenProps) {
+  const [showReport, setShowReport] = useState(false);
   const { scores, winner, answers, questions } = result;
   const myScore = scores[playerIndex];
   const opponentScore = scores[1 - playerIndex];
@@ -70,6 +73,10 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
         </div>
       </div>
 
+      {showReport && (
+        <BattleReport result={result} playerIndex={playerIndex} players={players} />
+      )}
+      {!showReport && (
       <div className="w-full max-w-lg mb-6 sm:mb-8">
         <h3 className="text-sm text-gray-500 font-medium mb-4">答题回顾</h3>
         <div className="space-y-3">
@@ -145,8 +152,15 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
           })}
         </div>
       </div>
+      )}
 
-      <div className="flex gap-4">
+      <div className="flex gap-3 flex-wrap justify-center">
+        <button
+          onClick={() => setShowReport(!showReport)}
+          className="px-6 py-3 bg-white border-2 border-purple-200 text-purple-600 font-bold rounded-xl hover:bg-purple-50 transition-colors"
+        >
+          {showReport ? '📋 答题回顾' : '📊 查看报告'}
+        </button>
         <button
           onClick={onPlayAgain}
           className="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg"
