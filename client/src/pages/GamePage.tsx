@@ -149,7 +149,7 @@ export default function GamePage() {
       applyRoomState(data.state);
     });
     const cleanupError = on('room-error', (msg) => { setError(msg); });
-    emit('join-room', { roomId, playerName: '玩家B' });
+    emit('join-room', { roomId });
     return () => { cleanupJoined(); cleanupError(); };
   }, [connected, roomId, isCreator, isJoiner, isReconnected, on, emit, applyRoomState]);
 
