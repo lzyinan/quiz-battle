@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import { useAuth } from '../contexts/AuthContext';
 import { getMistakes } from '../utils/mistakes';
+import { getFavorites } from '../utils/favorites';
 
 const STORAGE_KEY = 'quizpk_room';
-const NAME_KEY = 'quizpk_name';
 
 interface SavedRoom {
   roomId: string;
   playerIndex: number;
-  playerName: string;
 }
 
 function getSavedRoom(): SavedRoom | null {
@@ -26,56 +26,46 @@ function clearSavedRoom() {
 }
 
 export default function HomePage() {
+  const { user, logout } = useAuth();
   const { connected, on, emit } = useSocket();
   const navigate = useNavigate();
   const [joining, setJoining] = useState(false);
   const [roomId, setRoomId] = useState('');
   const [error, setError] = useState('');
-  const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || '');
   const [savedRoom, setSavedRoom] = useState<SavedRoom | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [mistakeCount, setMistakeCount] = useState(() => getMistakes().length);
+  const [favoriteCount, setFavoriteCount] = useState(() => getFavorites().length);
 
-  // Check for saved room on mount
   useEffect(() => {
     const saved = getSavedRoom();
-    if (saved) {
-      setSavedRoom(saved);
-    }
+    if (saved) setSavedRoom(saved);
   }, []);
 
-  // Save name to localStorage on change
   useEffect(() => {
-    localStorage.setItem(NAME_KEY, playerName);
-  }, [playerName]);
-
-  useEffect(() => {
-    const refreshMistakeCount = () => setMistakeCount(getMistakes().length);
-    refreshMistakeCount();
-    window.addEventListener('focus', refreshMistakeCount);
-    return () => window.removeEventListener('focus', refreshMistakeCount);
+    const refresh = () => {
+      setMistakeCount(getMistakes().length);
+      setFavoriteCount(getFavorites().length);
+    };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
   }, []);
 
   const handleCreate = () => {
     const cleanup = on('room-created', (data) => {
       cleanup();
-      // Save room info for reconnection
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        roomId: data.roomId,
-        playerIndex: data.playerIndex,
-        playerName: playerName || '玩家A',
-      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ roomId: data.roomId, playerIndex: data.playerIndex }));
       navigate(`/game/${data.roomId}`, {
         state: {
           creator: true,
           playerIndex: data.playerIndex,
           players: data.players,
           roomState: data.state,
-          playerName: playerName || '玩家A',
         },
       });
     });
-    emit('create-room', { playerName: playerName || '玩家A' });
+    emit('create-room');
   };
 
   const handleJoin = () => {
@@ -87,24 +77,16 @@ export default function HomePage() {
     setError('');
     setJoining(true);
 
-    const nameToUse = playerName || '玩家B';
-
     const cleanupJoined = on('room-joined', (data) => {
       cleanupJoined();
       cleanupError();
-      // Save room info for reconnection
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        roomId: data.roomId,
-        playerIndex: data.playerIndex,
-        playerName: nameToUse,
-      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ roomId: data.roomId, playerIndex: data.playerIndex }));
       navigate(`/game/${data.roomId}`, {
         state: {
           joined: true,
           playerIndex: data.playerIndex,
           players: data.players,
           roomState: data.state,
-          playerName: nameToUse,
         },
       });
     });
@@ -116,7 +98,7 @@ export default function HomePage() {
       setJoining(false);
     });
 
-    emit('join-room', { roomId: trimmed, playerName: nameToUse });
+    emit('join-room', { roomId: trimmed });
   };
 
   const handleReconnect = () => {
@@ -127,12 +109,7 @@ export default function HomePage() {
     const cleanupReconnected = on('reconnected', (data) => {
       cleanupReconnected();
       cleanupError();
-      // Update saved room with fresh data
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        roomId: data.roomId,
-        playerIndex: data.playerIndex,
-        playerName: savedRoom.playerName,
-      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ roomId: data.roomId, playerIndex: data.playerIndex }));
       navigate(`/game/${data.roomId}`, {
         state: {
           reconnected: true,
@@ -140,7 +117,6 @@ export default function HomePage() {
           players: data.players,
           roomState: data.state,
           phase: data.phase,
-          playerName: savedRoom.playerName,
         },
       });
     });
@@ -148,18 +124,13 @@ export default function HomePage() {
     const cleanupError = on('room-error', (msg) => {
       cleanupError();
       cleanupReconnected();
-      // Room is gone, clear saved data and show normal UI
       clearSavedRoom();
       setSavedRoom(null);
       setError(msg);
       setReconnecting(false);
     });
 
-    emit('reconnect-room', {
-      roomId: savedRoom.roomId,
-      playerIndex: savedRoom.playerIndex,
-      playerName: savedRoom.playerName,
-    });
+    emit('reconnect-room', { roomId: savedRoom.roomId, playerIndex: savedRoom.playerIndex });
   };
 
   const handleDismissSaved = () => {
@@ -174,11 +145,12 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 bg-clip-text text-transparent mb-4">
+      <div className="text-center mb-10">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 bg-clip-text text-transparent mb-3">
           🧠 知识PK大作战
         </h1>
         <p className="text-base sm:text-lg text-gray-500">两人对战，抢答PK，谁才是知识之王？</p>
+        <p className="text-sm text-purple-400 mt-1">👋 {user?.nickname}</p>
       </div>
 
       {!connected && (
@@ -187,7 +159,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Reconnection banner */}
       {savedRoom && (
         <div className="mb-6 w-full max-w-xs bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 text-center">
           <p className="text-sm text-purple-700 mb-3">你有一局未完成的游戏</p>
@@ -209,7 +180,7 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center gap-5">
         <div className="w-full max-w-xs bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
           <div className="flex items-center justify-between gap-2">
             <Link
@@ -230,22 +201,26 @@ export default function HomePage() {
         </div>
 
         <Link
-          to="/solo"
-          className="w-full max-w-xs px-8 py-4 bg-gradient-to-r from-teal-500 to-cyan-600 text-white text-xl font-bold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 block text-center"
+          to="/favorites"
+          className="w-full max-w-xs px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xl font-bold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 block text-center"
         >
-          📝 单人答题
+          ⭐ 我的收藏
+          <span className="ml-2 text-sm opacity-80">{favoriteCount}题</span>
         </Link>
 
-        {/* Player name input */}
-        <div className="w-full max-w-xs">
-          <input
-            type="text"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value.slice(0, 10))}
-            placeholder="输入你的名字"
-            maxLength={10}
-            className="w-full px-4 py-3 text-center text-lg border-2 border-gray-200 rounded-xl focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-          />
+        <div className="w-full max-w-xs flex gap-3">
+          <Link
+            to="/solo"
+            className="flex-1 px-6 py-3.5 bg-gradient-to-r from-teal-500 to-cyan-600 text-white text-lg font-bold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 block text-center"
+          >
+            📝 单人答题
+          </Link>
+          <Link
+            to="/history"
+            className="flex-1 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-lg font-bold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 block text-center"
+          >
+            📊 战绩
+          </Link>
         </div>
 
         <button
@@ -283,12 +258,20 @@ export default function HomePage() {
         </div>
       </div>
 
-      <Link
-        to="/admin"
-        className="mt-12 sm:mt-16 text-gray-400 hover:text-purple-500 transition-colors text-sm flex items-center gap-1"
-      >
-        ⚙️ 题库管理后台
-      </Link>
+      <div className="mt-10 flex items-center gap-4">
+        <Link
+          to="/admin"
+          className="text-gray-400 hover:text-purple-500 transition-colors text-sm flex items-center gap-1"
+        >
+          ⚙️ 题库管理
+        </Link>
+        <button
+          onClick={logout}
+          className="text-gray-400 hover:text-red-500 transition-colors text-sm flex items-center gap-1"
+        >
+          🚪 退出
+        </button>
+      </div>
     </div>
   );
 }

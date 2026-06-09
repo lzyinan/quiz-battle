@@ -13,20 +13,20 @@ export function generateRoomId(): string {
   return id;
 }
 
-export function createRoom(playerId: string, playerName: string): Room {
+export function createRoom(playerId: string, userId: number, playerName: string): Room {
   const id = generateRoomId();
-  const player: Player = { id: playerId, name: playerName || '玩家A', playerIndex: 0, ready: false };
+  const player: Player = { id: playerId, userId, name: playerName, playerIndex: 0, ready: false };
   const room: Room = {
     id, players: [player, undefined], status: 'waiting', quizId: null, questionCount: 10,
     questions: [], currentQuestion: 0, scores: [0, 0], answeredBy: [false, false],
-    answers: [], createdAt: Date.now(),
+    answers: [], createdAt: Date.now(), gameStartedAt: null, playAgainFlags: [false, false],
   };
   rooms.set(id, room);
   scheduleEmptyRoomCleanup(id);
   return room;
 }
 
-export function joinRoom(roomId: string, playerId: string, playerName: string): { room: Room; playerIndex: number } | { error: string } {
+export function joinRoom(roomId: string, playerId: string, userId: number, playerName: string): { room: Room; playerIndex: number } | { error: string } {
   const room = rooms.get(roomId);
   if (!room) return { error: '房间不存在' };
   if (room.players[0]?.id === playerId) return { error: '你已经在房间里了' };
@@ -34,23 +34,29 @@ export function joinRoom(roomId: string, playerId: string, playerName: string): 
     if (room.players[1].id === playerId) return { error: '你已经在房间里了' };
     return { error: '房间已满' };
   }
-  const player: Player = { id: playerId, name: playerName || '玩家B', playerIndex: 1, ready: false };
+  const player: Player = { id: playerId, userId, name: playerName, playerIndex: 1, ready: false };
   room.players[1] = player;
   room.status = 'readying';
   return { room, playerIndex: 1 };
 }
 
 /** Reconnect a disconnected player */
-export function reconnectPlayer(roomId: string, playerIndex: number, newSocketId: string): { room: Room; playerIndex: number } | { error: string } {
+export function reconnectPlayer(roomId: string, playerIndex: number, newSocketId: string, userId: number): { room: Room; playerIndex: number } | { error: string } {
   const room = rooms.get(roomId);
   if (!room) return { error: '房间不存在' };
   if (playerIndex !== 0 && playerIndex !== 1) return { error: '玩家不存在' };
   const player = room.players[playerIndex];
   if (!player) return { error: '玩家不存在' };
 
-  // Update socket id
   player.id = newSocketId;
+  player.userId = userId;
   return { room, playerIndex };
+}
+
+/** Mark a player's play-again intent. Returns true if BOTH players have flagged. */
+export function setPlayAgainFlag(room: Room, playerIndex: number): boolean {
+  room.playAgainFlags[playerIndex] = true;
+  return room.playAgainFlags[0] && room.playAgainFlags[1];
 }
 
 /** Reset room for a new game */
@@ -61,8 +67,10 @@ export function resetRoom(room: Room): void {
   room.scores = [0, 0];
   room.answeredBy = [false, false];
   room.answers = [];
+  room.gameStartedAt = null;
   room.quizId = null;
   room.questionCount = 10;
+  room.playAgainFlags = [false, false];
   // Reset ready status
   room.players[0].ready = false;
   if (room.players[1]) room.players[1].ready = false;
@@ -115,6 +123,7 @@ export function loadQuestions(room: Room): boolean {
   room.scores = [0, 0];
   room.answeredBy = [false, false];
   room.answers = [];
+  room.gameStartedAt = Date.now();
   room.status = 'countdown';
   return true;
 }
@@ -239,4 +248,31 @@ export function getRoomsInfo() {
     questionCount: room.questionCount,
     createdAt: room.createdAt,
   }));
+}
+
+export function recordGameResult(room: Room): void {
+  if (!room.gameStartedAt) return;
+  const p1 = room.players[0];
+  const p2 = room.players[1];
+  if (!p1 || !p2) return;
+
+  const [s1, s2] = room.scores;
+  let winner: number | null;
+  if (s1 > s2) winner = 0; else if (s2 > s1) winner = 1; else winner = null;
+
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO game_records (room_id, player1_id, player2_id, player1_name, player2_name, player1_score, player2_score, winner, question_count, quiz_id, answers, duration_seconds)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    room.id,
+    p1.userId, p2.userId,
+    p1.name, p2.name,
+    s1, s2,
+    winner,
+    room.questions.length,
+    room.quizId,
+    JSON.stringify(room.answers),
+    Math.round((Date.now() - room.gameStartedAt) / 1000),
+  );
 }
