@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Question, SoloAnswerRecord } from '../../../shared/types';
+import type { SoloAnswerRecord } from '../../../shared/types';
 import SoloQuestionCard from '../components/solo/SoloQuestionCard';
 import SoloScoreBar from '../components/solo/SoloScoreBar';
 import SoloResultScreen from '../components/solo/SoloResultScreen';

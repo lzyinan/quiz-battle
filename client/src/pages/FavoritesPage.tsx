@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Question } from '../../../shared/types';
 import {
   getFavorites,
   removeFavorite,
