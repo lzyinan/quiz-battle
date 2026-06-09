@@ -9,11 +9,21 @@ interface ResultScreenProps {
 }
 
 export default function ResultScreen({ result, playerIndex, players, onPlayAgain, onGoHome }: ResultScreenProps) {
-  const { scores, winner } = result;
+  const { scores, winner, answers, questions } = result;
   const myScore = scores[playerIndex];
   const opponentScore = scores[1 - playerIndex];
   const isWinner = winner === playerIndex;
   const isDraw = winner === null;
+
+  const myName = players[playerIndex]?.name ?? '你';
+  const opponentName = players[1 - playerIndex]?.name ?? '对手';
+
+  const answerMap = new Map<number, { playerIndex: number; selectedOption: number; correct: boolean }[]>();
+  for (const a of answers) {
+    const questionAnswers = answerMap.get(a.questionIndex) ?? [];
+    questionAnswers.push(a);
+    answerMap.set(a.questionIndex, questionAnswers);
+  }
 
   const confettiPieces = Array.from({ length: 20 }, (_, i) => (
     <div
@@ -49,31 +59,90 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
       <div className="bg-white rounded-3xl shadow-xl p-5 sm:p-8 mb-6 sm:mb-8 w-full max-w-sm">
         <div className="flex items-center justify-between">
           <div className="text-center flex-1">
-            <div className="text-sm text-gray-400 mb-1">{players[playerIndex]?.name}</div>
+            <div className="text-sm text-gray-400 mb-1">{myName}</div>
             <div className="text-3xl sm:text-4xl font-black text-purple-600">{myScore}</div>
           </div>
           <div className="text-xl sm:text-2xl font-bold text-gray-300 px-3 sm:px-4">VS</div>
           <div className="text-center flex-1">
-            <div className="text-sm text-gray-400 mb-1">{players[1 - playerIndex]?.name}</div>
+            <div className="text-sm text-gray-400 mb-1">{opponentName}</div>
             <div className="text-3xl sm:text-4xl font-black text-pink-600">{opponentScore}</div>
           </div>
         </div>
       </div>
 
-      <div className="w-full max-w-sm mb-6 sm:mb-8">
-        <h3 className="text-sm text-gray-500 font-medium mb-3">答题回顾</h3>
-        <div className="overflow-x-auto -mx-1 px-1">
-          <div className="grid grid-cols-5 sm:grid-cols-8 gap-1.5 sm:gap-2" style={{ minWidth: 'max-content' }}>
-            {result.answers.map((answer, idx) => (
-              <div key={idx} className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold ${
-              answer.playerIndex === playerIndex
-                ? answer.correct ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                : 'bg-gray-100 text-gray-400'
-            }`}>
-              {answer.playerIndex === playerIndex ? (answer.correct ? '✓' : '✗') : `${idx + 1}`}
-            </div>
-          ))}
-        </div>
+      <div className="w-full max-w-lg mb-6 sm:mb-8">
+        <h3 className="text-sm text-gray-500 font-medium mb-4">答题回顾</h3>
+        <div className="space-y-3">
+          {questions.map((question, idx) => {
+            const questionAnswers = answerMap.get(idx) ?? [];
+            const myAnswer = questionAnswers.find(answer => answer.playerIndex === playerIndex);
+            const opponentAnswer = questionAnswers.find(answer => answer.playerIndex === 1 - playerIndex);
+
+            return (
+              <div key={idx} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+                  <span className="text-xs font-bold text-gray-400">第 {idx + 1} 题</span>
+                  {myAnswer || opponentAnswer ? (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">
+                      {myName}{myAnswer ? (myAnswer.correct ? '✓' : '✗') : '未答'} / {opponentName}{opponentAnswer ? (opponentAnswer.correct ? '✓' : '✗') : '未答'}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-300">未作答</span>
+                  )}
+                </div>
+
+                {/* Question content */}
+                <div className="px-4 py-3">
+                  <p className="text-sm font-medium text-gray-800 mb-3">{question.content}</p>
+
+                  {/* Options */}
+                  <div className="space-y-1.5">
+                    {question.options.map((option, optIdx) => {
+                      const isCorrectAnswer = optIdx === question.answer;
+                      const isMySelection = myAnswer?.selectedOption === optIdx;
+                      const isOpponentSelection = opponentAnswer?.selectedOption === optIdx;
+
+                      let optionStyle = 'bg-gray-50 text-gray-600 border border-transparent';
+                      const indicators: string[] = [];
+
+                      if (isCorrectAnswer) {
+                        optionStyle = 'bg-green-50 text-green-700 border border-green-200';
+                        indicators.push('正确答案');
+                      }
+                      if (isMySelection && !isCorrectAnswer) {
+                        optionStyle = 'bg-red-50 text-red-700 border border-red-200';
+                        indicators.push(`${myName}选错`);
+                      }
+                      if (isOpponentSelection && !isCorrectAnswer) {
+                        optionStyle = isMySelection
+                          ? 'bg-red-50 text-red-700 border border-red-200'
+                          : 'bg-pink-50 text-pink-700 border border-pink-200';
+                        indicators.push(`${opponentName}选错`);
+                      }
+                      if ((isMySelection || isOpponentSelection) && isCorrectAnswer) {
+                        optionStyle = 'bg-green-100 text-green-800 border border-green-300';
+                        if (isMySelection) indicators.push(`${myName}答对`);
+                        if (isOpponentSelection) indicators.push(`${opponentName}答对`);
+                      }
+
+                      return (
+                        <div key={optIdx} className={`rounded-lg px-3 py-2 text-sm flex items-center justify-between ${optionStyle}`}>
+                          <span className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-gray-400">{String.fromCharCode(65 + optIdx)}</span>
+                            <span>{option}</span>
+                          </span>
+                          {indicators.length > 0 && (
+                            <span className="text-xs font-medium whitespace-nowrap ml-2">{indicators.join(' · ')}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

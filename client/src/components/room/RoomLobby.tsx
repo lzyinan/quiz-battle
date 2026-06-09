@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Player, Quiz } from '../../../../shared/types';
+import type { Player, QuestionCount, Quiz } from '../../../../shared/types';
 import { API_BASE } from '../../utils/api';
 
 interface RoomLobbyProps {
@@ -7,35 +7,24 @@ interface RoomLobbyProps {
   playerIndex: number;
   players: (Player | null)[];
   connected: boolean;
+  selectedQuiz: number | null;
+  questionCount: QuestionCount;
   onEmit: (event: string, ...args: any[]) => void;
-  on: (event: string, handler: (...args: any[]) => void) => () => void;
 }
 
-export default function RoomLobby({ roomId, playerIndex, players, connected, onEmit, on }: RoomLobbyProps) {
+const QUESTION_COUNTS: QuestionCount[] = [10, 20, 30];
+
+export default function RoomLobby({ roomId, playerIndex, players, connected, selectedQuiz, questionCount, onEmit }: RoomLobbyProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [selectedQuiz, setSelectedQuiz] = useState<number | null>(null);
-  const [ready, setReady] = useState(false);
-  const [opponentReady, setOpponentReady] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/quizzes`).then(res => res.json()).then(setQuizzes).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    return on('quiz-selected', (quizId: number | null) => setSelectedQuiz(quizId));
-  }, [on]);
-
-  useEffect(() => {
-    return on('player-ready-update', (updatedPlayers: (Player | null)[]) => {
-      const myPlayer = updatedPlayers[playerIndex];
-      const opponent = updatedPlayers[1 - playerIndex];
-      if (myPlayer) setReady(myPlayer.ready);
-      if (opponent) setOpponentReady(opponent.ready);
-    });
-  }, [on, playerIndex]);
-
   const myPlayer = players[playerIndex];
   const opponent = players[1 - playerIndex];
+  const ready = !!myPlayer?.ready;
+  const opponentReady = !!opponent?.ready;
 
   return (
     <div className="max-w-lg mx-auto p-4 sm:p-6">
@@ -66,7 +55,8 @@ export default function RoomLobby({ roomId, playerIndex, players, connected, onE
             {quizzes.map(quiz => (
               <button
                 key={quiz.id}
-                onClick={() => { setSelectedQuiz(quiz.id); onEmit('select-quiz', quiz.id); }}
+                onClick={() => { onEmit('select-quiz', quiz.id); }}
+                disabled={!connected}
                 className={`w-full px-3 sm:px-4 py-3 rounded-xl text-left transition-all text-sm sm:text-base ${
                   selectedQuiz === quiz.id ? 'bg-purple-500 text-white shadow-lg scale-[1.02]' : 'bg-white hover:bg-purple-50 border-2 border-gray-100 hover:border-purple-200'
                 }`}
@@ -76,7 +66,8 @@ export default function RoomLobby({ roomId, playerIndex, players, connected, onE
               </button>
             ))}
             <button
-              onClick={() => { setSelectedQuiz(null); onEmit('select-quiz', null); }}
+              onClick={() => { onEmit('select-quiz', null); }}
+              disabled={!connected}
               className={`w-full px-4 py-3 rounded-xl text-left transition-all ${
                 selectedQuiz === null ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg scale-[1.02]' : 'bg-white hover:bg-pink-50 border-2 border-gray-100 hover:border-pink-200'
               }`}
@@ -88,10 +79,33 @@ export default function RoomLobby({ roomId, playerIndex, players, connected, onE
         </div>
       )}
 
+      {opponent && (
+        <div className="mb-6 sm:mb-8">
+          <h3 className="text-center text-gray-600 font-medium mb-3 text-sm sm:text-base">选择答题数量</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {QUESTION_COUNTS.map(count => (
+              <button
+                key={count}
+                onClick={() => { onEmit('select-question-count', count); }}
+                disabled={!connected}
+                className={`px-3 py-3 rounded-xl text-center font-bold transition-all ${
+                  questionCount === count
+                    ? 'bg-indigo-500 text-white shadow-lg scale-[1.02]'
+                    : 'bg-white hover:bg-indigo-50 border-2 border-gray-100 hover:border-indigo-200 text-gray-600'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {count}题
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {opponent && !ready && (
         <div className="text-center">
           <button
-            onClick={() => { setReady(true); onEmit('player-ready'); }}
+            onClick={() => { onEmit('player-ready'); }}
+            disabled={!connected}
             className="px-8 sm:px-12 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-lg sm:text-xl font-bold rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
           >
             ✋ 准备就绪！
