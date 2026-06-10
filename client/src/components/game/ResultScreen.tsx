@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { GameOverPayload, Player } from '../../../../shared/types';
 import BattleReport from '../report/BattleReport';
 import BattleShareCard from '../share/BattleShareCard';
@@ -13,13 +13,33 @@ interface ResultScreenProps {
   opponentWantsPlayAgain: boolean;
 }
 
+function useCountUp(target: number, duration = 600) {
+  const [value, setValue] = useState(0);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    const startTime = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration]);
+
+  return value;
+}
+
 export default function ResultScreen({ result, playerIndex, players, onPlayAgain, onGoHome, opponentWantsPlayAgain }: ResultScreenProps) {
   const [showReport, setShowReport] = useState(false);
   const [sharing, setSharing] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const { scores, winner, answers, questions } = result;
-  const myScore = scores[playerIndex];
-  const opponentScore = scores[1 - playerIndex];
+  const myScore = useCountUp(scores[playerIndex]);
+  const opponentScore = useCountUp(scores[1 - playerIndex]);
   const isWinner = winner === playerIndex;
   const isDraw = winner === null;
 
@@ -58,32 +78,32 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
   ));
 
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
+    <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 relative z-10">
       {(isWinner || isDraw) && confettiPieces}
 
-      <div className="text-center mb-6 sm:mb-8">
+      <div className="text-center mb-6 sm:mb-8 animate-fade-in-up">
         <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">{isWinner ? '🏆' : isDraw ? '🤝' : '😅'}</div>
         <h2 className="text-2xl sm:text-3xl font-black">
           {isWinner ? (
-            <span className="bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">你赢了！</span>
+            <span className="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">你赢了！</span>
           ) : isDraw ? (
-            <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">势均力敌！</span>
+            <span className="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">势均力敌！</span>
           ) : (
-            <span className="text-gray-600">惜败一步</span>
+            <span className="text-white/60">惜败一步</span>
           )}
         </h2>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-xl p-5 sm:p-8 mb-6 sm:mb-8 w-full max-w-sm">
+      <div className="glass-card p-5 sm:p-8 mb-6 sm:mb-8 w-full max-w-sm animate-scale-pop">
         <div className="flex items-center justify-between">
           <div className="text-center flex-1">
-            <div className="text-sm text-gray-400 mb-1">{myName}</div>
-            <div className="text-3xl sm:text-4xl font-black text-purple-600">{myScore}</div>
+            <div className="text-sm text-white/50 mb-1">{myName}</div>
+            <div className="text-3xl sm:text-4xl font-black text-purple-300">{myScore}</div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-gray-300 px-3 sm:px-4">VS</div>
+          <div className="text-xl sm:text-2xl font-bold text-white/20 px-3 sm:px-4">VS</div>
           <div className="text-center flex-1">
-            <div className="text-sm text-gray-400 mb-1">{opponentName}</div>
-            <div className="text-3xl sm:text-4xl font-black text-pink-600">{opponentScore}</div>
+            <div className="text-sm text-white/50 mb-1">{opponentName}</div>
+            <div className="text-3xl sm:text-4xl font-black text-pink-300">{opponentScore}</div>
           </div>
         </div>
       </div>
@@ -93,7 +113,7 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
       )}
       {!showReport && (
       <div className="w-full max-w-lg mb-6 sm:mb-8">
-        <h3 className="text-sm text-gray-500 font-medium mb-4">答题回顾</h3>
+        <h3 className="text-sm text-white/50 font-medium mb-4">答题回顾</h3>
         <div className="space-y-3">
           {questions.map((question, idx) => {
             const questionAnswers = answerMap.get(idx) ?? [];
@@ -101,49 +121,46 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
             const opponentAnswer = questionAnswers.find(answer => answer.playerIndex === 1 - playerIndex);
 
             return (
-              <div key={idx} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-                  <span className="text-xs font-bold text-gray-400">第 {idx + 1} 题</span>
+              <div key={idx} className="glass-card overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+                  <span className="text-xs font-bold text-white/40">第 {idx + 1} 题</span>
                   {myAnswer || opponentAnswer ? (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
                       {myName}{myAnswer ? (myAnswer.correct ? '✓' : '✗') : '未答'} / {opponentName}{opponentAnswer ? (opponentAnswer.correct ? '✓' : '✗') : '未答'}
                     </span>
                   ) : (
-                    <span className="text-xs text-gray-300">未作答</span>
+                    <span className="text-xs text-white/30">未作答</span>
                   )}
                 </div>
 
-                {/* Question content */}
                 <div className="px-4 py-3">
-                  <p className="text-sm font-medium text-gray-800 mb-3">{question.content}</p>
+                  <p className="text-sm font-medium text-white/80 mb-3">{question.content}</p>
 
-                  {/* Options */}
                   <div className="space-y-1.5">
                     {question.options.map((option, optIdx) => {
                       const isCorrectAnswer = optIdx === question.answer;
                       const isMySelection = myAnswer?.selectedOption === optIdx;
                       const isOpponentSelection = opponentAnswer?.selectedOption === optIdx;
 
-                      let optionStyle = 'bg-gray-50 text-gray-600 border border-transparent';
+                      let optionStyle = 'bg-white/5 text-white/40 border border-transparent';
                       const indicators: string[] = [];
 
                       if (isCorrectAnswer) {
-                        optionStyle = 'bg-green-50 text-green-700 border border-green-200';
+                        optionStyle = 'bg-green-500/15 text-green-300 border border-green-400/30';
                         indicators.push('正确答案');
                       }
                       if (isMySelection && !isCorrectAnswer) {
-                        optionStyle = 'bg-red-50 text-red-700 border border-red-200';
+                        optionStyle = 'bg-red-500/15 text-red-300 border border-red-400/30';
                         indicators.push(`${myName}选错`);
                       }
                       if (isOpponentSelection && !isCorrectAnswer) {
                         optionStyle = isMySelection
-                          ? 'bg-red-50 text-red-700 border border-red-200'
-                          : 'bg-pink-50 text-pink-700 border border-pink-200';
+                          ? 'bg-red-500/15 text-red-300 border border-red-400/30'
+                          : 'bg-pink-500/15 text-pink-300 border border-pink-400/30';
                         indicators.push(`${opponentName}选错`);
                       }
                       if ((isMySelection || isOpponentSelection) && isCorrectAnswer) {
-                        optionStyle = 'bg-green-100 text-green-800 border border-green-300';
+                        optionStyle = 'bg-green-500/20 text-green-300 border border-green-400/40';
                         if (isMySelection) indicators.push(`${myName}答对`);
                         if (isOpponentSelection) indicators.push(`${opponentName}答对`);
                       }
@@ -151,7 +168,7 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
                       return (
                         <div key={optIdx} className={`rounded-lg px-3 py-2 text-sm flex items-center justify-between ${optionStyle}`}>
                           <span className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-gray-400">{String.fromCharCode(65 + optIdx)}</span>
+                            <span className="text-xs font-mono text-white/30">{String.fromCharCode(65 + optIdx)}</span>
                             <span>{option}</span>
                           </span>
                           {indicators.length > 0 && (
@@ -172,41 +189,40 @@ export default function ResultScreen({ result, playerIndex, players, onPlayAgain
       <div className="flex gap-3 flex-wrap justify-center">
         <button
           onClick={() => setShowReport(!showReport)}
-          className="px-6 py-3 bg-white border-2 border-purple-200 text-purple-600 font-bold rounded-xl hover:bg-purple-50 transition-colors"
+          className="glass-card px-6 py-3 font-bold hover:bg-white/20 transition-all"
         >
           {showReport ? '📋 答题回顾' : '📊 查看报告'}
         </button>
         <button
           onClick={handleShare}
           disabled={sharing}
-          className="px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50"
+          className="px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold rounded-xl hover:scale-105 hover:brightness-110 transition-all duration-200 shadow-lg disabled:opacity-50"
         >
           {sharing ? '⏳ 生成中...' : '📤 分享战绩'}
         </button>
         {opponentWantsPlayAgain ? (
           <button
             onClick={onPlayAgain}
-            className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg animate-pulse"
+            className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 hover:brightness-110 transition-all duration-200 shadow-lg animate-pulse"
           >
             🎯 对手想再来！点击开始
           </button>
         ) : (
           <button
             onClick={onPlayAgain}
-            className="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-200 shadow-lg"
+            className="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl hover:scale-105 hover:brightness-110 transition-all duration-200 shadow-lg"
           >
             再来一局
           </button>
         )}
         <button
           onClick={onGoHome}
-          className="px-8 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+          className="px-8 py-3 glass-card font-bold hover:bg-white/20 transition-all"
         >
           返回首页
         </button>
       </div>
 
-      {/* Hidden share card for capture */}
       <div className="fixed left-[-9999px] top-0">
         <BattleShareCard ref={shareCardRef} result={result} playerIndex={playerIndex} players={players} />
       </div>
