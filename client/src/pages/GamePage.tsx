@@ -176,7 +176,7 @@ export default function GamePage() {
 
   // Listen for player joined
   useEffect(() => {
-    return on('player-joined', (updatedPlayers) => { setPlayers(updatedPlayers); });
+    return on('player-joined', (updatedPlayers) => { setPlayers(updatedPlayers); setInfoMessage(''); });
   }, [on]);
 
   useEffect(() => {
