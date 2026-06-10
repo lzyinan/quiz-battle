@@ -306,10 +306,10 @@ export default function GamePage() {
 
   if (error && phase === 'lobby') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="glass-bg flex flex-col items-center justify-center p-4">
         <div className="text-6xl mb-4">😕</div>
-        <p className="text-xl text-gray-600 mb-4">{error}</p>
-        <button onClick={handleGoHome} className="px-6 py-3 bg-purple-500 text-white rounded-xl font-bold hover:bg-purple-600 transition-colors">
+        <p className="text-xl text-white/70 mb-4">{error}</p>
+        <button onClick={handleGoHome} className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold hover:brightness-110 transition-all">
           返回首页
         </button>
       </div>
@@ -317,27 +317,27 @@ export default function GamePage() {
   }
 
   return (
-    <div className="min-h-screen p-4">
+    <div className="glass-bg p-4">
       {phase === 'countdown' && <CountdownOverlay number={countdownNumber} />}
       {phase === 'lobby' && (
-        <>
+        <div className="relative z-10">
           {infoMessage && (
-            <div className="max-w-lg mx-auto mb-4 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium text-center">{infoMessage}</div>
+            <div className="max-w-lg mx-auto mb-4 px-4 py-3 bg-blue-500/20 backdrop-blur-sm text-blue-300 border border-blue-500/30 rounded-xl text-sm font-medium text-center">{infoMessage}</div>
           )}
           <RoomLobby roomId={roomId!} playerIndex={effectivePlayerIndex} players={players} connected={connected} selectedQuiz={selectedQuiz} questionCount={questionCount} onEmit={emit as any} />
-        </>
+        </div>
       )}
       {phase === 'playing' && currentQuestion && (
-        <div className="max-w-lg mx-auto pt-4">
+        <div className="relative z-10 max-w-lg mx-auto pt-4">
           <ScoreBoard playerIndex={effectivePlayerIndex} scores={scores} totalQuestions={totalQuestions} currentQuestion={questionIndex} players={players} />
-          <QuestionCard question={currentQuestion} questionIndex={questionIndex} myAnswered={myAnswered} opponentAnswered={opponentAnswered} showResult={showResult} onSubmit={handleSubmitAnswer} playerIndex={effectivePlayerIndex} players={players} />
+          <QuestionCard key={currentQuestion.id ?? questionIndex} question={currentQuestion} questionIndex={questionIndex} myAnswered={myAnswered} opponentAnswered={opponentAnswered} showResult={showResult} onSubmit={handleSubmitAnswer} playerIndex={effectivePlayerIndex} players={players} />
         </div>
       )}
       {phase === 'result' && gameResult && (
         <ResultScreen result={gameResult} playerIndex={effectivePlayerIndex} players={players} onPlayAgain={handlePlayAgain} onGoHome={handleGoHome} opponentWantsPlayAgain={opponentWantsPlayAgain} />
       )}
       {error && phase !== 'lobby' && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 bg-yellow-100 text-yellow-700 rounded-full shadow-lg text-sm font-medium">{error}</div>
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 bg-yellow-500/20 backdrop-blur-sm text-yellow-300 border border-yellow-500/30 rounded-full shadow-lg text-sm font-medium">{error}</div>
       )}
     </div>
   );
