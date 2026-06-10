@@ -95,6 +95,56 @@ export default function QuestionCard({ question, myAnswered, opponentAnswered, s
       {!myAnswered && opponentAnswered && !showResult && (
         <div className="text-center mt-4 text-yellow-600 font-medium animate-pulse">⚡ 对手已提交答案！</div>
       )}
+
+      {showResult && (
+        <ScoreHint
+          answers={showResult.answers}
+          playerIndex={playerIndex}
+          opponentName={opponentName}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Show who scored on this question */
+function ScoreHint({ answers, playerIndex, opponentName }: {
+  answers: [
+    { selectedOption: number; correct: boolean } | null,
+    { selectedOption: number; correct: boolean } | null,
+  ];
+  playerIndex: number;
+  opponentName: string;
+}) {
+  const myAnswer = answers[playerIndex];
+  const opponentAnswer = answers[1 - playerIndex];
+  const iScored = myAnswer?.correct === true;
+  const opponentScored = opponentAnswer?.correct === true;
+
+  if (iScored && opponentScored) {
+    return (
+      <div className="text-center mt-4 px-4 py-2.5 bg-green-50 rounded-xl text-green-700 font-bold text-sm">
+        🤝 两人都答对了！各得 1 分
+      </div>
+    );
+  }
+  if (iScored) {
+    return (
+      <div className="text-center mt-4 px-4 py-2.5 bg-green-50 rounded-xl text-green-700 font-bold text-sm">
+        ✅ 你答对了！+1 分
+      </div>
+    );
+  }
+  if (opponentScored) {
+    return (
+      <div className="text-center mt-4 px-4 py-2.5 bg-pink-50 rounded-xl text-pink-700 font-bold text-sm">
+        ❌ {opponentName} 答对了！+1 分
+      </div>
+    );
+  }
+  return (
+    <div className="text-center mt-4 px-4 py-2.5 bg-gray-50 rounded-xl text-gray-500 font-bold text-sm">
+      😅 两人都答错了，无人得分
     </div>
   );
 }

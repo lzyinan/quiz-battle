@@ -27,6 +27,18 @@ export function registerSocketHandlers(io: Server): void {
     });
 
     socket.on('join-room', (data: { roomId: string }) => {
+      // If player is already in this room, rejoin silently — send them back to the game page
+      const existingRoom = RoomManager.findRoomByPlayer(socket.id);
+      if (existingRoom && existingRoom.id === data.roomId) {
+        socket.join(data.roomId);
+        const playerIndex = existingRoom.players[0]?.id === socket.id ? 0 : 1;
+        const players = RoomManager.getPlayersSnapshot(existingRoom);
+        const state = RoomManager.getRoomStatePayload(existingRoom);
+        socket.emit('room-joined', { roomId: existingRoom.id, playerIndex, players, state });
+        emitRoomStateTo(socket, existingRoom);
+        return;
+      }
+
       const result = RoomManager.joinRoom(data.roomId, socket.id, socket.data.userId, socket.data.nickname);
       if ('error' in result) { socket.emit('room-error', result.error); return; }
       socket.join(data.roomId);
@@ -91,6 +103,36 @@ export function registerSocketHandlers(io: Server): void {
         emitRoomState(io, room);
         console.log(`[Room] 房间 ${room.id} 玩家 ${socket.data.nickname} 想再来一局，等待对手`);
       }
+    });
+
+    socket.on('leave-room', () => {
+      const room = RoomManager.findRoomByPlayer(socket.id);
+      if (!room || room.status !== 'finished') return;
+
+      const playerIndex = room.players[0]?.id === socket.id ? 0 : 1;
+      const roomId = room.id;
+      const result = RoomManager.playerLeave(room, playerIndex);
+      socket.leave(roomId);
+
+      if (!result) return;
+
+      if ('deleted' in result) {
+        io.socketsLeave(roomId);
+        console.log(`[Room] 房间 ${roomId} 双方离开，已删除`);
+        return;
+      }
+
+      // Notify staying player — they transition to lobby waiting for new joiner
+      const stayingSocketId = room.players[0]?.id;
+      if (stayingSocketId) {
+        const s = io.sockets.sockets.get(stayingSocketId);
+        if (s) {
+          s.emit('room-reset', RoomManager.getPlayersSnapshot(room));
+          s.emit('opponent-left');
+        }
+        emitRoomState(io, room);
+      }
+      console.log(`[Room] 房间 ${roomId} 玩家 ${socket.data.nickname} 离开，等待新对手`);
     });
 
     socket.on('select-quiz', (quizId: number | null) => {
@@ -187,6 +229,24 @@ export function registerSocketHandlers(io: Server): void {
       const room = RoomManager.handleDisconnect(socket.id);
       if (room) {
         const disconnectedIndex = room.players[0]?.id === socket.id ? 0 : 1;
+
+        // During finished state, treat disconnect as intentional leave
+        if (room.status === 'finished') {
+          const result = RoomManager.playerLeave(room, disconnectedIndex);
+          if (result && !('deleted' in result)) {
+            const stayingSocketId = room.players[0]?.id;
+            if (stayingSocketId) {
+              const s = io.sockets.sockets.get(stayingSocketId);
+              if (s) {
+                s.emit('room-reset', RoomManager.getPlayersSnapshot(room));
+                s.emit('opponent-left');
+              }
+              emitRoomState(io, room);
+            }
+          }
+          return;
+        }
+
         socket.to(room.id).emit('opponent-disconnected');
         setTimeout(() => {
           const currentRoom = RoomManager.getRoom(room.id);

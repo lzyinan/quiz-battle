@@ -76,6 +76,48 @@ export function resetRoom(room: Room): void {
   if (room.players[1]) room.players[1].ready = false;
 }
 
+/** Reset room to waiting state with only one player (at index 0), ready for a new joiner. */
+export function resetRoomToWaiting(room: Room): void {
+  room.status = 'waiting';
+  room.questions = [];
+  room.currentQuestion = 0;
+  room.scores = [0, 0];
+  room.answeredBy = [false, false];
+  room.answers = [];
+  room.gameStartedAt = null;
+  room.quizId = null;
+  room.questionCount = 10;
+  room.playAgainFlags = [false, false];
+  if (room.players[0]) room.players[0].ready = false;
+  scheduleEmptyRoomCleanup(room.id);
+}
+
+/** Handle a player intentionally leaving during the finished phase.
+ *  Moves the staying player to players[0] and resets room to waiting.
+ *  joinRoom always puts new joiners at players[1], so the staying player must be at index 0. */
+export function playerLeave(room: Room, playerIndex: number):
+  | { stayingPlayerIndex: number }
+  | { deleted: true }
+  | undefined
+{
+  if (!room.players[playerIndex]) return undefined;
+
+  const otherIndex = (1 - playerIndex) as 0 | 1;
+  const otherPlayer = room.players[otherIndex];
+
+  if (!otherPlayer) {
+    rooms.delete(room.id);
+    return { deleted: true };
+  }
+
+  // Move staying player to slot 0 (joinRoom always puts joiners at [1])
+  room.players[0] = { ...otherPlayer, playerIndex: 0 };
+  room.players[1] = undefined;
+  resetRoomToWaiting(room);
+
+  return { stayingPlayerIndex: 0 };
+}
+
 export function getRoom(roomId: string): Room | undefined {
   return rooms.get(roomId);
 }

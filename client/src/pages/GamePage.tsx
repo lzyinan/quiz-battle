@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import { useAuth } from '../contexts/AuthContext';
 import type { Player, Question, QuestionCount, AnswerResultPayload, GameOverPayload, RoomStatePayload, RoomStatus } from '../../../shared/types';
 import RoomLobby from '../components/room/RoomLobby';
 import CountdownOverlay from '../components/game/CountdownOverlay';
@@ -29,6 +30,7 @@ export default function GamePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { connected, on, emit } = useSocket();
+  const { user } = useAuth();
 
   const routeState = location.state as any;
   const isCreator = !!routeState?.creator;
@@ -49,6 +51,16 @@ export default function GamePage() {
   const [players, setPlayers] = useState<(Player | null)[]>(
     initialPlayers ?? (isCreator ? [{ id: '', userId: 0, name: '玩家A', playerIndex: 0, ready: false }, null] : [])
   );
+
+  // Self-healing: derive playerIndex from players array using userId to handle
+  // stale route state (page refresh, direct URL, etc.)
+  const effectivePlayerIndex = useMemo(() => {
+    if (user?.id != null && players?.length >= 2) {
+      const idx = players.findIndex(p => p?.userId === user.id);
+      if (idx >= 0) return idx;
+    }
+    return playerIndex;
+  }, [players, user?.id, playerIndex]);
   const [selectedQuiz, setSelectedQuiz] = useState<number | null>(initialRoomState?.quizId ?? null);
   const [questionCount, setQuestionCount] = useState<QuestionCount>(initialRoomState?.questionCount ?? 10);
   const [countdownNumber, setCountdownNumber] = useState<number>(3);
@@ -75,6 +87,7 @@ export default function GamePage() {
   const [gameResult, setGameResult] = useState<GameOverPayload | null>(initialRoomState?.gameOver ?? null);
   const [opponentWantsPlayAgain, setOpponentWantsPlayAgain] = useState(false);
   const [error, setError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
 
   const applyRoomState = useCallback((state: RoomStatePayload) => {
     if (state.roomId !== roomId) return;
@@ -85,8 +98,15 @@ export default function GamePage() {
     setScores(state.scores);
     setQuestionIndex(state.currentQuestion);
     setTotalQuestions(state.totalQuestions);
-    setMyAnswered(state.answeredBy[playerIndex]);
-    setOpponentAnswered(state.answeredBy[1 - playerIndex]);
+
+    // Derive myIdx from players using userId to avoid stale closure on playerIndex
+    let myIdx = playerIndex;
+    if (user?.id != null) {
+      const idx = state.players.findIndex(p => p?.userId === user.id);
+      if (idx >= 0) myIdx = idx;
+    }
+    setMyAnswered(state.answeredBy[myIdx]);
+    setOpponentAnswered(state.answeredBy[1 - myIdx]);
 
     if (state.status === 'waiting' || state.status === 'readying') {
       setPhase('lobby');
@@ -196,12 +216,12 @@ export default function GamePage() {
       setShowResult({ answers: data.answers, correctAnswer: data.correctAnswer });
       setMyAnswered(true);
       setOpponentAnswered(true);
-      const myAnswer = data.answers[playerIndex];
+      const myAnswer = data.answers[effectivePlayerIndex];
       if (currentQuestion && myAnswer && !myAnswer.correct) {
         upsertMistake(currentQuestion, myAnswer.selectedOption, data.correctAnswer);
       }
     });
-  }, [on, currentQuestion, playerIndex]);
+  }, [on, currentQuestion, effectivePlayerIndex]);
 
   // Listen for answer rejected
   useEffect(() => {
@@ -228,6 +248,11 @@ export default function GamePage() {
     return on('opponent-reconnected', () => { setError(''); });
   }, [on]);
 
+  // Listen for opponent intentionally leaving (during finished phase)
+  useEffect(() => {
+    return on('opponent-left', () => { setInfoMessage('对手已离开，等待新对手加入...'); });
+  }, [on]);
+
   // Listen for opponent wants to play again
   useEffect(() => {
     return on('opponent-play-again', () => { setOpponentWantsPlayAgain(true); });
@@ -247,6 +272,7 @@ export default function GamePage() {
       setSelectedQuiz(null);
       setQuestionCount(10);
       setError('');
+      setInfoMessage('');
       setOpponentWantsPlayAgain(false);
     });
   }, [on]);
@@ -263,9 +289,10 @@ export default function GamePage() {
 
   // Clear saved room when navigating away (return to home without play-again)
   const handleGoHome = useCallback(() => {
+    emit('leave-room');
     clearSavedRoom();
     navigate('/');
-  }, [navigate]);
+  }, [navigate, emit]);
 
   const handleSubmitAnswer = useCallback((optionIndex: number) => {
     if (!currentQuestion || myAnswered) return;
@@ -293,16 +320,21 @@ export default function GamePage() {
     <div className="min-h-screen p-4">
       {phase === 'countdown' && <CountdownOverlay number={countdownNumber} />}
       {phase === 'lobby' && (
-        <RoomLobby roomId={roomId!} playerIndex={playerIndex} players={players} connected={connected} selectedQuiz={selectedQuiz} questionCount={questionCount} onEmit={emit as any} />
+        <>
+          {infoMessage && (
+            <div className="max-w-lg mx-auto mb-4 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium text-center">{infoMessage}</div>
+          )}
+          <RoomLobby roomId={roomId!} playerIndex={effectivePlayerIndex} players={players} connected={connected} selectedQuiz={selectedQuiz} questionCount={questionCount} onEmit={emit as any} />
+        </>
       )}
       {phase === 'playing' && currentQuestion && (
         <div className="max-w-lg mx-auto pt-4">
-          <ScoreBoard playerIndex={playerIndex} scores={scores} totalQuestions={totalQuestions} currentQuestion={questionIndex} />
-          <QuestionCard question={currentQuestion} questionIndex={questionIndex} myAnswered={myAnswered} opponentAnswered={opponentAnswered} showResult={showResult} onSubmit={handleSubmitAnswer} playerIndex={playerIndex} players={players} />
+          <ScoreBoard playerIndex={effectivePlayerIndex} scores={scores} totalQuestions={totalQuestions} currentQuestion={questionIndex} players={players} />
+          <QuestionCard question={currentQuestion} questionIndex={questionIndex} myAnswered={myAnswered} opponentAnswered={opponentAnswered} showResult={showResult} onSubmit={handleSubmitAnswer} playerIndex={effectivePlayerIndex} players={players} />
         </div>
       )}
       {phase === 'result' && gameResult && (
-        <ResultScreen result={gameResult} playerIndex={playerIndex} players={players} onPlayAgain={handlePlayAgain} onGoHome={handleGoHome} opponentWantsPlayAgain={opponentWantsPlayAgain} />
+        <ResultScreen result={gameResult} playerIndex={effectivePlayerIndex} players={players} onPlayAgain={handlePlayAgain} onGoHome={handleGoHome} opponentWantsPlayAgain={opponentWantsPlayAgain} />
       )}
       {error && phase !== 'lobby' && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 bg-yellow-100 text-yellow-700 rounded-full shadow-lg text-sm font-medium">{error}</div>

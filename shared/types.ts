@@ -76,6 +76,7 @@ export interface ClientEvents {
   'player-ready': () => void;
   'submit-answer': (data: { questionIndex: number; optionIndex: number }) => void;
   'play-again': () => void;
+  'leave-room': () => void;
 }
 
 export interface ServerEvents {
@@ -97,6 +98,7 @@ export interface ServerEvents {
   'reconnected': (data: { roomId: string; playerIndex: number; players: (Player | null)[]; phase: string; state: RoomStatePayload }) => void;
   'room-reset': (players: (Player | null)[]) => void;
   'opponent-play-again': () => void;
+  'opponent-left': () => void;
 }
 
 export interface AnswerResultPayload {
